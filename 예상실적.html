@@ -1,0 +1,1224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>예상실적</title>
+<!-- SheetJS 호환 + 셀 서식(테두리·글꼴) 지원 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="예상실적_data.js"></script>
+<style>
+:root {
+  --bg: #f8fbff; --card: #ffffff; --line: #e3ebf5; --ink: #22303e; --muted: #6f7d8c;
+  --brand: #2a6fdb; --brand-ink: #1a4f9f; --ok: #1a8a50; --warn: #b25e00; --accent: #eef5ff; --danger: #c0392b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: linear-gradient(180deg, #eef6ff 0, var(--bg) 320px) no-repeat, var(--bg);
+  color: var(--ink); font-family: "Malgun Gothic", -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+}
+a { color: var(--brand); text-decoration: none; }
+.topbar { background: linear-gradient(100deg, #e4f0ff 0%, #d6e8fd 55%, #c7dffb 100%); color: var(--brand-ink);
+  border-bottom: 1px solid #bcd5f3; box-shadow: 0 2px 10px rgba(42,111,219,0.06); padding: 10px 20px;
+  display: flex; flex-direction: column; gap: 8px; }
+.topbar-row1 { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.topbar-row2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.topbar img { height: 72px; }
+.topbar .brand { font-size: 42px; font-weight: 800; color: var(--brand-ink); }
+.topbar .spacer { flex: 1; }
+.pill { background: #fff; border: 1px solid #cfe0f6; border-radius: 999px; padding: 6px 16px; color: var(--brand-ink);
+  font-weight: 700; font-size: 13.5px; cursor: pointer; font-family: inherit; }
+.pill:hover, .pill.on { background: var(--brand); color: #fff; border-color: var(--brand); text-decoration: none; }
+main { max-width: 1320px; margin: 0 auto; padding: 18px 20px 40px; }
+h1 { font-size: 22px; margin: 4px 0 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px;
+  box-shadow: 0 1px 3px rgba(30,70,130,0.05); margin-bottom: 18px; }
+.card h2 { font-size: 16px; margin: 0 0 12px; }
+.bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .lbl { font-size: 12.5px; color: var(--muted); }
+select, input[type=number], input[type=text] { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px;
+  font-size: 14px; font-family: inherit; color: var(--ink); }
+select:focus, input:focus { outline: 2px solid var(--accent); border-color: var(--brand); }
+input.yel { background: #fff3b0; border-color: #e0c14a; color: #8a6d00; width: 90px; text-align: right; font-weight: 700; }
+.btn { background: var(--brand); color: #fff; border: 1px solid var(--brand); border-radius: 7px; padding: 9px 14px;
+  font-weight: 700; font-size: 13.5px; cursor: pointer; font-family: inherit; }
+.btn:hover { background: var(--brand-ink); }
+.btn.ghost { background: #fff; color: var(--brand); }
+.btn.ghost:hover { background: var(--accent); }
+.badge { display: inline-block; background: var(--accent); color: var(--brand-ink); border-radius: 20px; padding: 2px 10px;
+  font-size: 12px; font-weight: 700; }
+.badge.warn { background: #fdf8ee; color: #8a5a00; }
+.badge.ok { background: #eefaf2; color: var(--ok); }
+.note { font-size: 12.5px; color: var(--muted); }
+.msg-err { color: var(--danger); font-weight: 700; }
+.tabs { display: flex; gap: 8px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.basis { border-radius: 14px; padding: 14px 16px; }
+.basis.sk { background: #f0f6ff; border: 1px solid #dbe7f7; }
+.basis.hl { background: #fdf8ee; border: 1px solid #f1e4c9; }
+.basis h3 { margin: 0 0 8px; font-size: 15px; color: var(--brand-ink); }
+.basis table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.basis td { padding: 4px 6px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.basis td.n { text-align: right; }
+.basis tr.res td { font-weight: 800; color: var(--brand-ink); }
+.xl-wrap { overflow-x: auto; }
+table.xl { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 100%; }
+#tbl { table-layout: fixed; min-width: 0; }
+#tbl td, #tbl th { overflow: hidden; text-overflow: ellipsis; }
+#status { min-height: 52px; }
+table.xl th, table.xl td { border: 1px solid #c9d3e0; padding: 5px 9px; white-space: nowrap; }
+table.xl th { background: #f3f8ff; color: var(--muted); font-weight: 700; }
+table.xl td.n { text-align: right; }
+table.xl td.gap, table.xl th.gap { border: none; background: transparent; width: 14px; padding: 0; }
+table.xl tr td.gap, table.xl tr.sum td.gap, table.xl tr.tot td.gap { background: #fff; border: none; }   /* 장금·흥아 사이 칸은 합계 줄에서도 흰색 */
+table.xl tr.sum td { background: #edf4fe; color: var(--brand-ink); font-weight: 800; }
+table.xl td.grp, table.xl tr.sum td.grp { font-weight: 700; color: var(--brand-ink); background: #fbfdff; text-align: center; vertical-align: middle; }
+table.xl td.blank { border: none; background: transparent; }
+table.xl tr.tot td:not(.blank):not(.gap) { background: #fff3b0; font-weight: 800; color: var(--ink); }
+table.xl tr.tot td.tot-lbl { text-align: center; }
+table.xl td.neg { color: var(--danger); }
+table.xl td.calc { font-weight: 700; }
+table.xl td.cmp { color: var(--muted); }
+.sec-title { font-size: 16px; color: var(--brand-ink); margin: 22px 0 10px; }
+.adjmark { font-size: 11px; font-weight: 700; color: var(--danger); }
+.legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -2px; border: 1px solid #c9d3e0; }
+.legend .l-sum::before { background: #edf4fe; }
+/* Remark 탭: 엑셀 Remark 시트 모양 */
+.rm-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.rm-pair + .rm-pair { border-top: 1px dashed var(--line); padding-top: 10px; }
+.rm-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.rm-title { font-size: 18px; font-weight: 800; }
+.rm-cmp { font-weight: 700; }
+.rm-item { margin-bottom: 14px; }
+.rm-box { display: flex; align-items: center; border: 1px solid #22303e; }
+.rm-box .rm-name { flex: 1; text-align: center; padding: 4px 8px; border-right: 1px solid #22303e; }
+.rm-box .rm-total { width: 120px; text-align: right; padding: 4px 8px; font-weight: 800; color: var(--danger); }
+.rm-line { display: flex; gap: 6px; align-items: center; margin-top: 5px; font-size: 13px; }
+.rm-line input[type=text] { flex: 1; padding: 5px 8px; font-size: 13px; }
+.rm-line input.yel { width: 80px; padding: 5px 6px; }
+.rm-line .rm-text { flex: 1; }
+.rm-amt { width: 90px; text-align: right; font-weight: 700; white-space: nowrap; }
+.rm-x { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; }
+.rm-x:hover { color: var(--danger); }
+.rm-add { padding: 3px 8px; font-size: 12px; margin-top: 5px; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } .topbar .brand { font-size: 28px; } .topbar img { height: 48px; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row1">
+    <img src="logo.png" alt="SKR" onerror="this.style.display='none'">
+    <div class="brand">예상실적</div>
+    <div class="spacer"></div>
+    <span class="note" id="fetched"></span>
+  </div>
+  <div class="topbar-row2">
+    <button class="pill on" data-tab="main">예상실적</button>
+    <button class="pill" data-tab="remark">Remark</button>
+    <button class="pill" data-tab="pull">항차 조정</button>
+    <button class="pill" data-tab="basis">산정 근거</button>
+  </div>
+</header>
+
+<main>
+  <h1 id="title">장금·흥아 예상실적</h1>
+
+  <div class="card">
+    <div class="bar">
+      <div class="field"><label for="month">예상 월</label><select id="month"></select></div>
+      <div class="field"><label>차수</label><div class="tabs" id="rounds"></div></div>
+      <label class="lbl" style="align-self:center"><input type="checkbox" id="cmpOther"> 다른 차수와 비교</label>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn" id="save">이 차수 저장</button>
+      <button class="btn ghost" id="excel">엑셀 다운로드</button>
+      <button class="btn ghost" id="backup">백업 내보내기</button>
+      <button class="btn ghost" id="restoreBtn">백업 불러오기</button>
+      <input type="file" id="restore" accept=".json" hidden>
+    </div>
+    <div class="note" id="status" style="margin-top:10px"></div>
+  </div>
+
+  <section id="tab-remark" hidden>
+    <div class="split" id="remarkCols"></div>
+  </section>
+
+  <section id="tab-pull" hidden>
+    <div class="card">
+      <h2 id="pullTitle">항차 조정</h2>
+      <div class="note" id="pullNote"></div>
+      <div class="bar" style="margin:10px 0">
+        <label class="lbl"><input type="checkbox" id="pullTdOnly" checked> 당기기: 이번달 출항 항차만</label>
+        <label class="lbl"><input type="checkbox" id="pullTeuOnly" checked> 부킹 있는 항차만</label>
+        <button class="btn ghost" id="pullClear" style="padding:6px 10px;font-size:12.5px">선택 해제</button>
+        <div style="flex:1"></div><div class="tabs" id="pullCo"></div>
+      </div>
+      <div id="pullSum"></div>
+    </div>
+    <div class="split">
+      <div><h2 class="sec-title" id="pullHead"></h2><div id="pullTables"></div></div>
+      <div><h2 class="sec-title" id="pushHead"></h2><div id="pushTables"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-main">
+  <div class="card">
+    <h2 id="tblTitle">예상실적</h2>
+    <div class="xl-wrap"><table class="xl" id="tbl"></table></div>
+    <div class="legend">
+      <span class="l-sum">합계·이익 줄</span>
+    </div>
+  </div>
+
+  </section>
+
+  <section id="tab-basis" hidden>
+  <div class="card" id="basisCard">
+    <h2>산정 근거</h2>
+    <div class="note">노란 칸을 바꾸면 예상실적 표가 바로 다시 계산됩니다.</div>
+    <div class="split" id="basis" style="margin-top:10px"></div>
+  </div>
+  </section>
+</main>
+
+<script>
+const DATA = window.FORECAST_DATA || {};
+const CO = [
+  { id: "sinokor", name: "장금", cls: "sk", fareBig: 6, fareSmall: 4, stvExtra: 230 },   // stvExtra: 하역 추가비용 기본(만불, 트러킹 제외)
+  { id: "hal", name: "흥아", cls: "hl", fareBig: 7, fareSmall: 4, stvExtra: 175 },
+];
+const ROUNDS = ["1차", "2차"];
+const STORE_KEY = "forecast:v1";
+const FARE_JUMP = 30;          // 포털 당월 평균운임이 전월보다 이 이상 높으면 "많이 오름"
+const DEFAULT_GROWTH = 2;      // 1차 예상 선적량 = 포털 당월 x (1 + 2%)
+
+// 엑셀 양식과 같은 행. sum: 합계 정의(하위 항목 키 배열 또는 함수)
+const GROUP_AT = { "가용선복(1)": "선적정보", "매출(가)": "매출", "화물변동비(나)": "화물변동비", "한계이익(다:가-나)": "한계이익",
+  "운항변동비(라)": "운항변동비", "운항고정비(마)": "운항고정비", "운항원가(바:라+마)": "운항원가", "운항이익(사:다-바)": "운항이익",
+  "운항외비용": "운항외비용", "일반관리비(아)": "일반관리비", "영업이익(자:사-아)": "영업이익" };
+const SHIP = ["가용선복(1)", "선적량(2)", "COC FULL1", "SOC F/E1", "공컨테이너(3)", "운임소석율(2/1)", "평균운임", "COC FULL2", "SOC F/E2", "소석율((2+3)/1)"];
+const SUMS = {
+  "매출(가)": { kids: ["운임", "대선료", "선복임대료", "타사선복화물수익", "지적체료등", "기타수익", "인센티브"] },
+  "화물변동비(나)": { kids: ["하역비", "지선료", "타사화물비", "선복정산화물비", "대리점수수료", "장비이송비", "장비비"] },
+  "한계이익(다:가-나)": { f: (v) => v["매출(가)"] - v["화물변동비(나)"], xl: (r) => `${r["매출(가)"]}-${r["화물변동비(나)"]}` },
+  "운항변동비(라)": { kids: ["항비", "연료비"] },
+  "운항고정비(마)": { kids: ["용선료", "선복임차료", "HIRE"] },
+  "운항원가(바:라+마)": { f: (v) => v["운항변동비(라)"] + v["운항고정비(마)"], xl: (r) => `${r["운항변동비(라)"]}+${r["운항고정비(마)"]}` },
+  "운항이익(사:다-바)": { f: (v) => v["한계이익(다:가-나)"] - v["운항원가(바:라+마)"], xl: (r) => `${r["한계이익(다:가-나)"]}-${r["운항원가(바:라+마)"]}` },
+  "영업이익(자:사-아)": { f: (v) => v["운항이익(사:다-바)"] - v["운항외비용"] - v["일반관리비(아)"], xl: (r) => `${r["운항이익(사:다-바)"]}-${r["운항외비용"]}-${r["일반관리비(아)"]}` },
+};
+const ITEMS = (Object.values(DATA)[0] || {}).items || [];
+
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => (n === null || n === undefined || isNaN(n) ? "" : Math.round(n).toLocaleString("en-US"));
+const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+
+function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; } }
+function saveStore(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); return true; } catch (e) { return false; } }
+let store = loadStore();
+let state = { month: Object.keys(DATA).sort().pop(), round: "1차", inputs: {} };
+
+function monthLabel(k) { return `${k.slice(0, 4)}년 ${Number(k.slice(5))}월`; }
+
+const avg3 = (d, k) => { const h = Object.values(d.hist || {}); return h.length ? h.reduce((a, r) => a + (r[k] || 0), 0) / h.length : d.prev[k] || 0; };
+
+// 선적량 증가 가정 기본값: 지난 달들의 "같은 날짜쯤 포털 선적량(스냅샷) → 그 달 마감 실적" 증가율 평균(최근 3개월, 소수 1자리).
+// 스냅샷은 수집 스크립트가 받을 때마다 남긴다(DATA[월].snaps = [[YYYYMMDD, 장금, 흥아]]). 이력이 없으면 DEFAULT_GROWTH.
+function growthDefault(m, c) {
+  const day = new Date(DATA[m].fetchedAt).getDate(), col = c.id === "sinokor" ? 1 : 2, hist = DATA[m][c.id].hist || {}, used = [];
+  for (let k = 1; k <= 3; k++) {
+    const ym = ymShift(ymOf(m), -k), key = `${ym.slice(0, 4)}-${ym.slice(4)}`;
+    const snaps = ((DATA[key] || {}).snaps || []).filter((x) => x[0].startsWith(ym) && x[col] > 0);
+    const fin = hist[key] && hist[key]["선적량(2)"];
+    if (!snaps.length || !fin) continue;
+    const near = snaps.reduce((a, x) => (Math.abs(+x[0].slice(6) - day) < Math.abs(+a[0].slice(6) - day) ? x : a));
+    used.push({ key, d: +near[0].slice(6), snap: near[col], fin, g: (fin / near[col] - 1) * 100 });
+  }
+  if (!used.length) return { pct: DEFAULT_GROWTH, used, why: `이력 없음 → 기본 ${DEFAULT_GROWTH}%` };
+  const pct = Math.round((used.reduce((a, u) => a + u.g, 0) / used.length) * 10) / 10;
+  return { pct, used, why: used.map((u) => `${Number(u.key.slice(5))}월 ${u.d}일 포털 ${fmt(u.snap)} → 마감 ${fmt(u.fin)} (${u.g >= 0 ? "+" : ""}${u.g.toFixed(1)}%)`).join(", ") + (used.length > 1 ? " 평균" : "") };
+}
+
+// 1차 일반관리비 기본값(만불, 사용자 지정): 평소 장금 190·흥아 75, 1·4·7·9월은 장금 130·흥아 135
+const GA_1ST = { normal: { sinokor: 190, hal: 75 }, months: [1, 4, 7, 9], special: { sinokor: 130, hal: 135 } };
+const gaDefault = (m, c) => (GA_1ST.months.includes(Number(m.slice(5))) ? GA_1ST.special : GA_1ST.normal)[c.id];
+
+// 기본 입력값: 규칙 기본값 위에 저장된 차수 입력을 덮어씀(나중에 생긴 입력칸은 기본값 유지)
+function defaultInputs(m, round) {
+  const saved = store[m] && store[m][round];
+  const inp = {};
+  for (const c of CO) {
+    const d = DATA[m][c.id];
+    const jump = (d.cur["평균운임"] || 0) - (d.prev["평균운임"] || 0);
+    const toMan = (n) => Math.round((n || 0) / 1000) / 10;   // 만불, 소수 1자리
+    const man = (k) => toMan(d.cur[k]);
+    inp[c.id] = { growth: growthDefault(m, c).pct, emptyUp: DEFAULT_GROWTH, fareUp: jump >= FARE_JUMP ? c.fareBig : c.fareSmall,
+      incentive: man("인센티브"), charter: man("대선료"), longFlip: [],
+      stvExtra: c.stvExtra, trucking: Math.round(toMan(d.stvPrev ? d.stvPrev.meast : 0)), equip: toMan(d.prev["장비비"]), adj: [],
+      // 기본값: 운항외비용 1차 0(직접 입력, 사용자 지정)·2차 포털 당월 / 일반관리비 1차 월별 고정값(gaDefault)·2차 포털 당월
+      nonop: round === "1차" ? 0 : man("운항외비용"),
+      ga: round === "1차" ? gaDefault(m, c) : man("일반관리비(아)"), remark: {}, remarkAdd: [], remarkHide: [] };
+    if (saved && saved.inputs && saved.inputs[c.id]) Object.assign(inp[c.id], JSON.parse(JSON.stringify(saved.inputs[c.id])));
+  }
+  return inp;
+}
+
+// 선적정보 계산. 1차: 규칙, 2차: 포털 당월 그대로
+function shipInfo(m, round, c, inp) {
+  const { cur, prev } = DATA[m][c.id];
+  if (round !== "1차") {
+    const v = {}; SHIP.forEach((k) => (v[k] = cur[k] || 0)); return { v, calc: new Set() };
+  }
+  const pShip = cur["선적량(2)"] || 0;
+  const ship = Math.round(pShip * (1 + inp.growth / 100));
+  const coc1 = pShip ? Math.round((ship * (cur["COC FULL1"] || 0)) / pShip) : 0;
+  const soc1 = ship - coc1;
+  // 공컨: 1차(25일쯤)엔 포털에 다 안 잡혀 적게 나옴 → 포털 당월과 최근 12개월 평균 중 큰 값에 증가 가정(기본 2%)을 더한다
+  const e12 = DATA[m][c.id].empty12 || [], emptyAvg = e12.length ? e12.reduce((a, x) => a + x[1], 0) / e12.length : 0;
+  const pEmpty = cur["공컨테이너(3)"] || 0, emptyBase = Math.max(pEmpty, emptyAvg);
+  const empty = Math.round(emptyBase * (1 + (inp.emptyUp ?? DEFAULT_GROWTH) / 100));
+  const prevRate = prev["가용선복(1)"] ? prev["선적량(2)"] / prev["가용선복(1)"] : 0;
+  const cap = prevRate ? Math.round(ship / prevRate) : 0;
+  const coc2 = (cur["COC FULL2"] || 0) + inp.fareUp;
+  const soc2 = (cur["SOC F/E2"] || 0) + inp.fareUp;
+  const avg = ship ? Math.round((coc2 * coc1 + soc2 * soc1) / ship) : 0;
+  const v = { "가용선복(1)": cap, "선적량(2)": ship, "COC FULL1": coc1, "SOC F/E1": soc1, "공컨테이너(3)": empty,
+    "운임소석율(2/1)": pct(ship, cap), "평균운임": avg, "COC FULL2": coc2, "SOC F/E2": soc2, "소석율((2+3)/1)": pct(ship + empty, cap) };
+  return { v, calc: new Set(SHIP), pShip, prevRate, pEmpty, emptyAvg, emptyMonths: e12.length, jump: (cur["평균운임"] || 0) - (prev["평균운임"] || 0) };
+}
+
+// ── 매출(1차) ──
+const AVG3 = ["타사선복화물수익", "지적체료등", "기타수익"];   // 최근 3개월 실적 평균
+const ymOf = (m) => m.replace("-", "");
+const ymShift = (ym, n) => { const t = Number(ym.slice(0, 4)) * 12 + Number(ym.slice(4)) - 1 + n; return `${Math.floor(t / 12)}${String((t % 12) + 1).padStart(2, "0")}`; };
+const fmtTa = (s) => (s ? `${s.slice(4, 6)}-${s.slice(6, 8)}` : "");
+
+// 장거리(SIS·SIS2·SGX1·SGX2·SMX) 선복임대료: 임대 항차를 골라 금액을 다시 잡는다.
+// 후보 = 전월 임대료가 잡힌 선박의 이번달 항차관리 항차 + 이번달 포털에 임대료가 잡힌 항차
+// 기본 포함 = 포털 금액 있음, 또는 NEXTTA <= 다음달 5일. 금액 = 포털 금액, 없으면 같은 서비스·방향 최근 달 항차당 평균
+function longPlan(m, c, inp) {
+  const L = DATA[m][c.id].long;
+  if (!L) return null;
+  const ym = ymOf(m), pym = ymShift(ym, -1), cut = ymShift(ym, 1) + "05";
+  const rentVsl = new Set(L.slot.filter((s) => s[0] === pym && s[4] > 0).map((s) => s[1] + "|" + s[2]));
+  // 단가: 같은 선박·방향의 가장 최근 달 → 같은 서비스·방향 → 같은 서비스 (선박마다 금액 차이가 커서 선박을 먼저 본다)
+  const unit = (svc, b, vsl) => {
+    const picks = [[(s) => s[1] === svc && s[2] === vsl && s[3].slice(-1) === b, "같은 선박"],
+      [(s) => s[1] === svc && s[3].slice(-1) === b, "서비스·방향"], [(s) => s[1] === svc, "서비스"]];
+    for (const [pick, lbl] of picks) {
+      const past = L.slot.filter((s) => s[0] < ym && s[4] > 0 && pick(s));
+      if (!past.length) continue;
+      const last = past.reduce((a, s) => (s[0] > a ? s[0] : a), "");
+      const rows = past.filter((s) => s[0] === last);
+      return { amt: rows.reduce((a, s) => a + s[4], 0) / rows.length, from: `${lbl} ${Number(last.slice(4))}월 ${rows.length > 1 ? rows.length + "항차 평균" : rows[0][2] + " " + rows[0][3]}` };
+    }
+    return { amt: 0, from: "이력 없음" };
+  };
+  const rows = [], byKey = {};
+  const booked = {}; L.slot.filter((s) => s[0] === ym).forEach((s) => (booked[s[1] + "|" + s[2] + "|" + s[3]] = s[4]));
+  for (const [svc, vsl, vyg, b, nextta] of L.voyages) {
+    const key = svc + "|" + vsl + "|" + vyg;
+    if (!rentVsl.has(svc + "|" + vsl) && !(key in booked)) continue;
+    const r = { key, svc, vsl, vyg, nextta, inWin: !!nextta && nextta <= cut, booked: booked[key] || 0, unit: unit(svc, b, vsl) };
+    r.def = r.booked > 0 || r.inWin;
+    rows.push(r); byKey[key] = r;
+  }
+  for (const key in booked) if (!byKey[key]) {
+    const [svc, vsl, vyg] = key.split("|");
+    rows.push({ key, svc, vsl, vyg, nextta: "", inWin: false, booked: booked[key], unit: unit(svc, vyg.slice(-1), vsl), def: true });
+  }
+  const flip = new Set(inp.longFlip || []);
+  let portal = 0, fcst = 0;
+  for (const r of rows) {
+    r.on = flip.has(r.key) ? !r.def : r.def;
+    r.amt = r.booked > 0 ? r.booked : r.unit.amt;
+    portal += r.booked;
+    if (r.on) fcst += r.amt;
+  }
+  rows.sort((a, b) => (a.svc + a.nextta).localeCompare(b.svc + b.nextta));
+  // 전월 장거리 임대 실적(전월 항차별 임대료 합): 전월 실적에서 빼고 이번달 장거리 예상으로 바꿔 끼운다
+  const prevLong = L.slot.filter((s) => s[0] === ymShift(ym, -1)).reduce((a, s) => a + s[4], 0);
+  return { rows, portal, fcst, cut, prevLong };
+}
+
+function revenue(m, c, inp, s) {
+  const { cur, hist } = DATA[m][c.id];
+  const v = {}, calc = new Set(), info = {};
+  const pBase = (cur["선적량(2)"] || 0) * (cur["평균운임"] || 0);
+  info.fareRatio = pBase ? (s.v["선적량(2)"] * s.v["평균운임"]) / pBase : 1;
+  v["운임"] = Math.round((cur["운임"] || 0) * info.fareRatio); calc.add("운임");
+  info.long = longPlan(m, c, inp);
+  // 선복임대료(인터뷰 규칙): 전월 실적을 장거리 항차 차이로 조정 = 전월 실적 − 전월 장거리 임대 + 이번달 장거리 예상
+  // (포털 당월 값은 1차 시점에 정리 전 항차가 섞여 부풀려져 있어 기준으로 쓰지 않는다)
+  if (info.long) { v["선복임대료"] = Math.round((DATA[m][c.id].prev["선복임대료"] || 0) - info.long.prevLong + info.long.fcst); calc.add("선복임대료"); }
+  const hk = Object.keys(hist || {});
+  info.avgMonths = hk;
+  if (hk.length) for (const k of AVG3) { v[k] = Math.round(hk.reduce((a, x) => a + (hist[x][k] || 0), 0) / hk.length); calc.add(k); }
+  v["인센티브"] = Math.round(inp.incentive * 10000); calc.add("인센티브");
+  if (c.id === "hal") { v["대선료"] = Math.round(inp.charter * 10000); calc.add("대선료"); }
+  return { v, calc, info };
+}
+
+// ── 화물변동비(1차) ──
+const AVG3_CARGO = ["지선료", "타사화물비", "선복정산화물비", "대리점수수료"];   // 최근 3개월 실적 평균
+function cargo(m, c, inp, s) {
+  const { prev, hist, stvPrev } = DATA[m][c.id];
+  const v = {}, calc = new Set(), info = {};
+  if (stvPrev && prev["선적량(2)"]) {
+    // 하역비 = 하역료(예상 선적량 × 전월 선적 TEU당 하역료) + 추가비용(기본 + SGX2 트러킹)
+    info.stvUnit = stvPrev.base / prev["선적량(2)"];
+    info.stvBase = Math.round(s.v["선적량(2)"] * info.stvUnit);
+    info.stvExtra = Math.round((inp.stvExtra + inp.trucking) * 10000);
+    v["하역비"] = info.stvBase + info.stvExtra; calc.add("하역비");
+  }
+  if (prev["공컨테이너(3)"]) {   // 장비이송비 = 예상 공컨 × 전월 공컨당
+    info.moveUnit = (prev["장비이송비"] || 0) / prev["공컨테이너(3)"];
+    v["장비이송비"] = Math.round(s.v["공컨테이너(3)"] * info.moveUnit); calc.add("장비이송비");
+  }
+  const hk = Object.keys(hist || {});
+  if (hk.length) for (const k of AVG3_CARGO) { v[k] = Math.round(hk.reduce((a, x) => a + (hist[x][k] || 0), 0) / hk.length); calc.add(k); }
+  v["장비비"] = Math.round(inp.equip * 10000); calc.add("장비비");
+  return { v, calc, info };
+}
+
+// ── 운항변동비(1차): 항비·연료비 ──
+// 항차관리 PORT/BUNKER='Y'(비용 발생 운항 항차) 중 선적 있음(LIFTINGFLAG=Y), 이번달 출항(TD <= 월말), 다음 TA <= 다음달 5일인 항차:
+//   포털 금액이 있으면 그 금액, 없으면 같은 서비스 전월 항차당 평균. 여기에 항차 외 금액(전월 P&L - 전월 항차 합)을 더한다.
+// (9월 마감 기준 이 조건으로 장금 217/222, 흥아 82/83 항차가 맞음)
+function opex(m, c) {
+  const { prev, opx } = DATA[m][c.id];
+  if (!opx || !opx.prevSvc) return null;
+  const ym = ymOf(m), cut = ymShift(ym, 1) + "05", end = ym + "31", P = opx.prevSvc;
+  const info = { cut, noHist: new Set(), out: 0, svc: {} };
+  for (const [kind, flag, amtI, cntI, sumI, item] of [["port", 4, 7, 0, 1, "항비"], ["fuel", 5, 8, 2, 3, "연료비"]]) {
+    const o = { booked: 0, nBooked: 0, est: 0, nEst: 0 };
+    for (const r of opx.cur) {
+      const sv = (info.svc[r[0]] = info.svc[r[0]] || { n: 0, prevN: P[r[0]] ? P[r[0]][0] : 0, port: 0, fuel: 0, prevPort: P[r[0]] ? P[r[0]][1] : 0, prevFuel: P[r[0]] ? P[r[0]][3] : 0 });
+      if (r[amtI] > 0) { o.booked += r[amtI]; o.nBooked++; sv[kind] += r[amtI]; if (kind === "port") sv.n++; continue; }
+      if (r[flag] !== "Y") continue;
+      if ((r[6] && r[6] > cut) || (r[9] && r[9] > end) || r[10] !== "Y") { if (kind === "port") info.out++; continue; }
+      const a = P[r[0]];
+      // 항비는 서비스·바운드별 최근 마감월 항차당 평균을 먼저 쓰고, 없으면 서비스 전월 평균
+      const pb = kind === "port" && opx.portBound && opx.portBound[r[0] + "|" + String(r[2]).slice(-1)];
+      if ((!a || !a[cntI]) && !(pb && pb[0])) { info.noHist.add(r[0]); if (kind === "port") sv.n++; continue; }
+      const unit = pb && pb[0] ? pb[1] / pb[0] : a[sumI] / a[cntI];
+      if (pb && pb[0]) info.boundUsed = (info.boundUsed || 0) + 1;
+      o.est += unit; o.nEst++; sv[kind] += unit; if (kind === "port") sv.n++;
+    }
+    for (const k in P) if (!info.svc[k]) info.svc[k] = { n: 0, prevN: P[k][0], port: 0, fuel: 0, prevPort: P[k][1], prevFuel: P[k][3] };
+    o.other = (prev[item] || 0) - Object.values(P).reduce((s, a) => s + a[sumI], 0);
+    o.total = Math.round(o.booked + o.est + o.other);
+    info[kind] = o;
+  }
+  return info;
+}
+
+// 상계 서비스(사용자 지정 2026-10-21): 장금의 KQS·KXS 대선료와 KQS·KXS1 선복임차료는 서로 상계되므로 예상실적·Remark에서 뺀다. 흥아는 건드리지 않는다.
+const OFFSET_CHARTER = { sinokor: ["KQS", "KXS"], hal: [] };   // 대선료에서 뺄 대선 서비스
+const OFFSET_SLOTIN = { sinokor: ["KQS", "KXS1"], hal: [] };   // 선복임차료에서 뺄 서비스
+const isOffset = (c, svc) => (OFFSET_CHARTER[c.id] || []).includes(svc);
+const isOffsetSlot = (c, svc) => (OFFSET_SLOTIN[c.id] || []).includes(svc);
+// 이번달 대선 계약(A12)의 서비스별 대선 일수×일당. 상계 서비스 몫을 대선료에서 빼는 비율 계산용
+function charterEst(m, c) {
+  const ym = ymOf(m), y = +ym.slice(0, 4), mo = +ym.slice(4), first = Date.UTC(y, mo - 1, 1), last = Date.UTC(y, mo, 0), out = [];
+  for (const [svc, vsl, hire, period] of DATA[m][c.id].charter || []) {
+    const mt = String(period).match(/(\d{4})-(\d{2})-(\d{2})-(\d{4})-(\d{2})-(\d{2})/);
+    if (!mt) continue;
+    const a = Math.max(first, Date.UTC(+mt[1], +mt[2] - 1, +mt[3])), b = Math.min(last, Date.UTC(+mt[4], +mt[5] - 1, +mt[6]));
+    if (b >= a) out.push({ svc, vsl, amt: (Math.round((b - a) / 864e5) + 1) * hire });
+  }
+  return out;
+}
+// 상계 대선을 뺀 대선료: 포털 당월 × (상계 아닌 대선 몫 ÷ 전체 대선). 대선 계약 정보가 없으면 포털 그대로
+function charterNet(m, c, portal) {
+  const est = charterEst(m, c), tot = est.reduce((a, x) => a + x.amt, 0);
+  if (!tot || !(OFFSET_CHARTER[c.id] || []).length) return portal;
+  const keep = est.filter((x) => !isOffset(c, x.svc)).reduce((a, x) => a + x.amt, 0);
+  return Math.round(portal * keep / tot);
+}
+
+// ── 운항고정비(1차) ──
+// 선복임차료: 서비스별 입력 금액 + (예상 임차 항차 − 입력 항차) × 전월 항차당 임차료 + 항차 외(전월 P&L − 전월 항차 합)
+//   예상 임차 항차 = 이번달 항차수 × 전월 임차 항차수 ÷ 전월 항차수
+// 용선료·HIRE: 전월 ÷ 전월 일수 × 이번달 일수
+const daysOf = (ym) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(4)), 0).getDate();
+function fixed(m, c) {
+  const { prev, slotIn } = DATA[m][c.id];
+  const ym = ymOf(m), info = { days: daysOf(ym), prevDays: daysOf(ymShift(ym, -1)) };
+  const k = info.days / info.prevDays;
+  info["용선료"] = Math.round((prev["용선료"] || 0) * k);
+  info["HIRE"] = Math.round((prev["HIRE"] || 0) * k);
+  const pl = DATA[m][c.id].plSlotIn;
+  if (slotIn && pl && pl.length) {
+    // P&L(CHECK) 항차별 선복임차료 반영: 대상 항차(항차관리 기준) 금액 합 + 항차 외(전월 P&L − 전월 항차 합).
+    // 미사용·선적없음·다음달 출항·다음 TA 다음달 6일 이후 항차와 상계 서비스는 뺀다.
+    const o = { booked: 0, nBooked: 0, est: 0, nEst: 0, svc: [], fromPl: true, excl: {} }, by = {};
+    for (const [svc, vsl, vyg, amt, stt] of pl) {
+      const why = isOffsetSlot(c, svc) ? "상계" : stt !== "대상" ? stt : null;
+      if (why) { const x = (o.excl[why] = o.excl[why] || [0, 0]); x[0]++; x[1] += amt; continue; }
+      o.booked += amt; o.nBooked++; by[svc] = (by[svc] || 0) + amt;
+    }
+    let prevSum = 0;
+    for (const [svc, a] of Object.entries(slotIn)) prevSum += a[5];
+    for (const svc of new Set([...Object.keys(by), ...Object.keys(slotIn)])) {
+      const a = slotIn[svc] || [0, 0, 0, 0, 0, 0];
+      if (isOffsetSlot(c, svc) || (!by[svc] && !a[5])) continue;
+      o.svc.push({ svc, n: a[0], pn: a[3], pP: a[4], expect: 0, amt: by[svc] || 0, pSum: a[5] });
+    }
+    o.other = (prev["선복임차료"] || 0) - prevSum;
+    o.total = Math.round(o.booked + o.other);
+    o.svc.sort((x, y) => y.amt + y.pSum - x.amt - x.pSum);
+    info.slot = o;
+  } else if (slotIn) {
+    const o = { booked: 0, nBooked: 0, est: 0, nEst: 0, svc: [] };
+    let prevSum = 0;
+    for (const [svc, [n, nB, booked, pn, pP, pSum]] of Object.entries(slotIn)) {
+      prevSum += pSum;
+      if (isOffsetSlot(c, svc)) continue;   // 상계 서비스(KQS·KXS1)는 이번달 임차료를 잡지 않는다
+      const expect = pn ? (n * pP) / pn : 0, unit = pP ? pSum / pP : 0, more = Math.max(0, expect - nB);
+      o.booked += booked; o.nBooked += nB; o.est += more * unit; o.nEst += more;
+      if (n || pn || booked || pSum) o.svc.push({ svc, n, pn, pP, expect, amt: booked + more * unit, pSum });
+    }
+    o.other = (prev["선복임차료"] || 0) - prevSum;
+    o.total = Math.round(o.booked + o.est + o.other);
+    o.svc.sort((a, b) => b.amt + b.pSum - a.amt - a.pSum);
+    info.slot = o;
+  }
+  return info;
+}
+
+// 회사 한 곳의 예상 열 전체(합계 다시 계산). 조정·특이사항은 차수와 상관없이 마지막에 더한다.
+function forecast(m, round, c, inp) {
+  const { cur } = DATA[m][c.id];
+  const s = shipInfo(m, round, c, inp);
+  const v = { ...s.v }, calc = new Set(s.calc), adjOf = {};
+  let rev = null, crg = null, opx = null, fix = null;
+  if (round === "1차") {
+    rev = revenue(m, c, inp, s); Object.assign(v, rev.v); rev.calc.forEach((k) => calc.add(k));
+    crg = cargo(m, c, inp, s); Object.assign(v, crg.v); crg.calc.forEach((k) => calc.add(k));
+    opx = opex(m, c);
+    if (opx) { v["항비"] = opx.port.total; v["연료비"] = opx.fuel.total; calc.add("항비"); calc.add("연료비"); }
+    fix = fixed(m, c);
+    for (const k of ["용선료", "HIRE"]) { v[k] = fix[k]; calc.add(k); }
+    if (fix.slot) { v["선복임차료"] = fix.slot.total; calc.add("선복임차료"); }
+  } else {   // 2차: 포털 당월 값 + 직접 입력 4개(인센티브·흥아 대선료·운항외비용·일반관리비)
+    v["인센티브"] = Math.round(inp.incentive * 10000); calc.add("인센티브");
+    if (c.id === "hal") { v["대선료"] = Math.round(inp.charter * 10000); calc.add("대선료"); }
+  }
+  v["운항외비용"] = Math.round(inp.nonop * 10000); v["일반관리비(아)"] = Math.round(inp.ga * 10000);   // 직접 입력(만불)
+  calc.add("운항외비용"); calc.add("일반관리비(아)");
+  if (c.id !== "hal" && (OFFSET_CHARTER[c.id] || []).length) { v["대선료"] = charterNet(m, c, cur["대선료"] || 0); calc.add("대선료"); }   // 상계 대선 제외
+  for (const k of ITEMS) if (!(k in v) && !SUMS[k]) v[k] = cur[k] || 0;
+  for (const a of inp.adj || []) {
+    if (!a.item || !(a.item in v) || SUMS[a.item] || SHIP.includes(a.item)) continue;
+    const amt = Math.round((Number(a.amt) || 0) * 10000);
+    v[a.item] += amt; adjOf[a.item] = (adjOf[a.item] || 0) + amt;
+  }
+  for (const k of ITEMS) { const d = SUMS[k]; if (d) v[k] = d.kids ? d.kids.reduce((a, x) => a + (v[x] || 0), 0) : d.f(v); }
+  return { v, calc, s, rev, crg, opx, fix, adjOf };
+}
+function prevCol(m, c) {
+  const p = { ...DATA[m][c.id].prev };
+  for (const k of ITEMS) { const d = SUMS[k]; if (d) p[k] = d.kids ? d.kids.reduce((a, x) => a + (p[x] || 0), 0) : d.f(p); }
+  return p;
+}
+
+function render() {
+  const m = state.month;
+  if (!m || !DATA[m]) { $("tbl").innerHTML = ""; $("status").innerHTML = '<span class="msg-err">예상실적_data.js 가 없습니다. node 포탈_예상실적가져오기.js YYYYMM 을 먼저 실행하세요.</span>'; return; }
+  const d = DATA[m];
+  $("title").textContent = `장금·흥아 ${monthLabel(m)} 예상실적 ${state.round}`;
+  $("fetched").textContent = `포털 조회: ${new Date(d.fetchedAt).toLocaleString("ko-KR")}`;
+  $("rounds").innerHTML = ROUNDS.map((r) => `<button class="pill ${r === state.round ? "on" : ""}" data-r="${r}">${r}${store[m] && store[m][r] ? " ✓" : ""}</button>`).join("");
+  const saved = store[m] && store[m][state.round];
+  // 다른 차수(1차↔2차) 비교 열: 체크했고 그 차수가 저장돼 있을 때만. 1차·2차 화면 모양을 같게 두려고 기본은 끔
+  const other = state.round === "1차" ? "2차" : "1차";
+  const first = $("cmpOther").checked && store[m] && store[m][other];
+  const emptyCo = CO.filter((c) => !(d[c.id].cur["선적량(2)"] > 0)).map((c) => c.name);
+  $("status").innerHTML = [
+    saved ? `<span class="badge ok">저장됨 ${new Date(saved.savedAt).toLocaleString("ko-KR")}</span>` : `<span class="badge">저장 전</span>`,
+    emptyCo.length ? `<span class="badge warn">${emptyCo.join("·")} 포털 당월 값이 아직 없습니다(0). 1차(25일쯤) 작성 전에 다시 가져오세요.</span>` : "",
+    `<span>전월 기준: ${CO.map((c) => `${c.name} ${d[c.id].prevSrc}`).join(", ")}</span>`,
+  ].filter(Boolean).join(" ");
+
+  const res = {};
+  for (const c of CO) res[c.id] = { f: forecast(m, state.round, c, state.inputs[c.id]), p: prevCol(m, c), first: first ? first.values[c.id] : null };
+  renderBasis(m, res);
+  renderTable(m, res);
+  renderPull(m, res);
+  renderRemark(m, res);
+}
+
+function renderBasis(m, res) {
+  $("basis").innerHTML = CO.map((c) => {
+    const s = res[c.id].f.s, v = res[c.id].f.v, inp = state.inputs[c.id], d = DATA[m][c.id];
+    if (state.round !== "1차") return `<div class="basis ${c.cls}"><h3>${c.name}</h3>${basis2(c, res[c.id].f, inp, d)}${otherBasis(c, res[c.id].f, inp, d)}${adjBasis(c, inp)}</div>`;
+    const big = s.jump >= FARE_JUMP;
+    return `<div class="basis ${c.cls}"><h3>${c.name}</h3><h3 style="margin-top:6px">선적정보</h3><table>
+      <tr><td>포털 당월 선적량</td><td class="n">${fmt(s.pShip)}</td></tr>
+      <tr><td>선적량 증가 가정<div class="note">기본값 ${growthDefault(m, c).pct}%: ${growthDefault(m, c).why}</div></td><td class="n"><input class="yel" type="text" inputmode="decimal" data-co="${c.id}" data-k="growth" value="${inp.growth}"> %</td></tr>
+      <tr class="res"><td>예상 선적량</td><td class="n">${fmt(v["선적량(2)"])}</td></tr>
+      <tr><td>공컨: 포털 당월 ${fmt(s.pEmpty)} / 최근 ${s.emptyMonths}개월 평균 ${fmt(s.emptyAvg)} → ${s.pEmpty >= s.emptyAvg ? "포털" : "평균"} 사용</td><td class="n"><span class="badge">${fmt(Math.max(s.pEmpty, s.emptyAvg))}</span></td></tr>
+      <tr><td>공컨 증가 가정</td><td class="n"><input class="yel" type="text" inputmode="decimal" data-co="${c.id}" data-k="emptyUp" value="${inp.emptyUp ?? DEFAULT_GROWTH}"> %</td></tr>
+      <tr class="res"><td>예상 공컨테이너</td><td class="n">${fmt(v["공컨테이너(3)"])}</td></tr>
+      <tr><td>전월 운임소석율 (${fmt(d.prev["선적량(2)"])} / ${fmt(d.prev["가용선복(1)"])})</td><td class="n">${(s.prevRate * 100).toFixed(2)}%</td></tr>
+      <tr class="res"><td>예상 가용선복 = 예상 선적량 ÷ 전월 운임소석율</td><td class="n">${fmt(v["가용선복(1)"])}</td></tr>
+      <tr><td>평균운임 포털 당월 ${fmt(d.cur["평균운임"])} / 전월 ${fmt(d.prev["평균운임"])} → ${s.jump >= 0 ? "+" : ""}${fmt(s.jump)}$</td>
+          <td class="n"><span class="badge ${big ? "warn" : ""}">${big ? "많이 오름" : "비슷"}</span></td></tr>
+      <tr><td>평균운임 상승폭 (COC·SOC 단가에 같이 더함)</td><td class="n">+<input class="yel" type="number" step="1" data-co="${c.id}" data-k="fareUp" value="${inp.fareUp}"> $</td></tr>
+      <tr class="res"><td>예상 평균운임 (선적량 가중평균)</td><td class="n">${fmt(v["평균운임"])}</td></tr>
+    </table>${revenueBasis(c, res[c.id].f, inp, d)}${cargoBasis(c, res[c.id].f, inp, d)}${opexBasis(res[c.id].f)}${fixedBasis(res[c.id].f, d)}${otherBasis(c, res[c.id].f, inp, d)}${adjBasis(c, inp)}</div>`;
+  }).join("");
+}
+
+// 2차 산정 근거: 1차와 같은 묶음(선적정보·매출·화물변동비·운항변동비·운항고정비)으로, 항목마다 포털 당월 값.
+// 직접 입력하는 인센티브·흥아 대선료는 매출 묶음 안에 입력칸으로 둔다.
+function basis2(c, f, inp, d) {
+  const man = (k) => ((d.cur[k] || 0) / 10000).toFixed(1);
+  const sec = (title, sumKey, items) => `<h3 style="margin-top:${title === "선적정보" ? 6 : 14}px">${title}</h3><table>
+    ${items.map((k) => {
+      if (k === "인센티브") return `<tr><td>인센티브: 직접 입력 (포털 당월 ${man(k)}만불)</td><td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-k="incentive" value="${inp.incentive}"> 만불</td></tr>`;
+      if (k === "대선료" && c.id === "hal") return `<tr><td>대선료: 직접 입력 (포털 당월 ${man(k)}만불)</td><td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-k="charter" value="${inp.charter}"> 만불</td></tr>`;
+      return `<tr><td>${k}: 포털 당월</td><td class="n">${fmt(f.v[k] - (f.adjOf[k] || 0))}</td></tr>`;
+    }).join("")}
+    ${sumKey ? `<tr class="res"><td>${sumKey}</td><td class="n">${fmt(f.v[sumKey])}</td></tr>` : ""}</table>`;
+  return `<div class="note">2차는 포털 당월 값을 그대로 쓰고, 노란 칸만 직접 입력합니다.</div>` +
+    sec("선적정보", "", SHIP) + sec("매출", "매출(가)", SUMS["매출(가)"].kids) + sec("화물변동비", "화물변동비(나)", SUMS["화물변동비(나)"].kids) +
+    sec("운항변동비", "운항변동비(라)", SUMS["운항변동비(라)"].kids) + sec("운항고정비", "운항고정비(마)", SUMS["운항고정비(마)"].kids);
+}
+
+function cargoBasis(c, f, inp, d) {
+  const i = f.crg.info, v = f.v, p = d.prev;
+  let h = `<h3 style="margin-top:14px">화물변동비</h3><table>`;
+  if (i.stvBase !== undefined) h += `
+    <tr><td>하역료: 예상 선적량 ${fmt(f.s.v["선적량(2)"])} × 전월 TEU당 ${i.stvUnit.toFixed(1)}$ (전월 하역료 ${fmt(d.stvPrev.base)} ÷ ${fmt(p["선적량(2)"])})</td><td class="n">${fmt(i.stvBase)}</td></tr>
+    <tr><td>추가비용 기본 (전월 추가비용 ${fmt(d.stvPrev.extra)})</td><td class="n"><input class="yel" type="number" step="5" data-co="${c.id}" data-k="stvExtra" value="${inp.stvExtra}"> 만불</td></tr>
+    <tr><td>SGX2 트러킹 (전월 M.EAST 추가비용 ${fmt(d.stvPrev.meast)})</td><td class="n"><input class="yel" type="number" step="5" data-co="${c.id}" data-k="trucking" value="${inp.trucking}"> 만불</td></tr>
+    <tr class="res"><td>하역비</td><td class="n">${fmt(v["하역비"] - (f.adjOf["하역비"] || 0))}</td></tr>`;
+  else h += `<tr><td colspan="2" class="msg-err">전월 하역비 구성(실적검증 stv)이 없어 하역비는 포털 값입니다.</td></tr>`;
+  if (i.moveUnit !== undefined) h += `<tr><td>장비이송비: 예상 공컨 ${fmt(f.s.v["공컨테이너(3)"])} × 전월 공컨당 ${i.moveUnit.toFixed(1)}$</td><td class="n">${fmt(v["장비이송비"] - (f.adjOf["장비이송비"] || 0))}</td></tr>`;
+  h += `<tr><td>지선료·타사화물비·선복정산화물비·대리점수수료: 최근 3개월 평균</td><td class="n">${AVG3_CARGO.map((k) => fmt(v[k] - (f.adjOf[k] || 0))).join(" / ")}</td></tr>
+    <tr><td>장비비 (전월 ${(p["장비비"] / 10000).toFixed(1)}만불)</td><td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-k="equip" value="${inp.equip}"> 만불</td></tr>
+    <tr class="res"><td>화물변동비(나)</td><td class="n">${fmt(v["화물변동비(나)"])}</td></tr></table>`;
+  return h;
+}
+
+function opexBasis(f) {
+  const cm = state.month, pm = prevMonth(cm);
+  const o = f.opx;
+  if (!o) return `<h3 style="margin-top:14px">운항변동비</h3><div class="msg-err">전월 항비·유류비 항차 데이터(실적검증 cost)가 없어 포털 값입니다.</div>`;
+  const row = (lbl, x) => `<tr><td>${lbl}: 입력 ${x.nBooked}항차 ${fmt(x.booked)} + 미입력 ${x.nEst}항차 추정 ${fmt(x.est)} + 항차 외 ${fmt(x.other)}</td><td class="n">${fmt(x.total)}</td></tr>`;
+  const svcs = Object.entries(o.svc).filter(([, s]) => s.n || s.prevN).sort((a, b) => b[1].fuel + b[1].prevFuel - (a[1].fuel + a[1].prevFuel));
+  const totN = svcs.reduce((a, [, s]) => a + s.n, 0), totP = svcs.reduce((a, [, s]) => a + s.prevN, 0);
+  return `<h3 style="margin-top:14px">운항변동비</h3><table>
+    ${row("항비", o.port)}${row("연료비", o.fuel)}
+    <tr class="res"><td>운항변동비(라)</td><td class="n">${fmt(f.v["운항변동비(라)"])}</td></tr></table>
+    <div class="note">대상 = 항차관리 항비·유류비 대상(Y) 중 선적 있음·이번달 출항·다음 TA ≤ ${fmtTa(o.cut)}. 미입력 항차 단가 = 항비는 같은 서비스·바운드의 최근 마감월(최대 3개월) 항차당 평균(${o.boundUsed || 0}항차, 없으면 서비스 전월 평균), 연료비는 같은 서비스 전월 항차당 평균.
+    조건 밖이라 뺀 항차 ${o.out}개.${o.noHist.size ? ` <b style="color:var(--warn)">전월 이력이 없어 0으로 둔 서비스: ${[...o.noHist].join(", ")}</b>` : ""}</div>
+    <details style="margin-top:6px"><summary class="lbl" style="cursor:pointer">서비스별 항차·금액 (${cm} ${totN}항차 / ${pm} ${totP}항차)</summary>
+    <table><tr><td><b>서비스</b></td><td class="n"><b>${cm} 항차</b></td><td class="n"><b>${pm} 항차</b></td><td class="n"><b>${cm} 항비</b></td><td class="n"><b>${pm} 항비</b></td><td class="n"><b>${cm} 연료비</b></td><td class="n"><b>${pm} 연료비</b></td></tr>
+    ${svcs.map(([k, s]) => `<tr${s.n !== s.prevN ? ' style="color:var(--warn)"' : ""}><td>${k}</td><td class="n">${s.n}</td><td class="n">${s.prevN}</td><td class="n">${fmt(s.port)}</td><td class="n">${fmt(s.prevPort)}</td><td class="n">${fmt(s.fuel)}</td><td class="n">${fmt(s.prevFuel)}</td></tr>`).join("")}
+    </table></details>`;
+}
+
+function fixedBasis(f, d) {
+  const cm = state.month, pm = prevMonth(cm);
+  const x = f.fix, o = x.slot, dd = `× ${x.days}/${x.prevDays}일`;
+  let h = `<h3 style="margin-top:14px">운항고정비</h3><table>
+    <tr><td>용선료: 전월 ${fmt(d.prev["용선료"])} ${dd}</td><td class="n">${fmt(x["용선료"])}</td></tr>`;
+  h += o && o.fromPl ? `<tr><td>선복임차료: P&L(CHECK) 대상 ${o.nBooked}항차 ${fmt(o.booked)} + 항차 외 ${fmt(o.other)}
+      <div class="note">뺀 항차: ${Object.entries(o.excl).map(([k, x]) => `${k} ${x[0]}항차 ${fmt(x[1])}`).join(", ") || "없음"}</div></td><td class="n">${fmt(o.total)}</td></tr>`
+    : o ? `<tr><td>선복임차료: 입력 ${o.nBooked}항차 ${fmt(o.booked)} + 미입력 ${o.nEst.toFixed(0)}항차 추정 ${fmt(o.est)} + 항차 외 ${fmt(o.other)}</td><td class="n">${fmt(o.total)}</td></tr>`
+    : `<tr><td colspan="2" class="msg-err">선복임차료 항차 데이터가 없어 포털 값입니다.</td></tr>`;
+  h += `<tr><td>HIRE(선비·감가상각비·선원비): 전월 ${fmt(d.prev["HIRE"])} ${dd}</td><td class="n">${fmt(x["HIRE"])}</td></tr>
+    <tr class="res"><td>운항고정비(마)</td><td class="n">${fmt(f.v["운항고정비(마)"])}</td></tr></table>`;
+  if (o) h += `<div class="note">예상 임차 항차 = 이번달 항차수 × 전월 임차 항차 ÷ 전월 항차수, 단가 = 전월 항차당 임차료.</div>
+    <details style="margin-top:6px"><summary class="lbl" style="cursor:pointer">서비스별 선복임차료 (항차 수가 전월과 다른 서비스는 주황)</summary>
+    <table><tr><td><b>서비스</b></td><td class="n"><b>${cm} 항차</b></td><td class="n"><b>${pm} 항차</b></td><td class="n"><b>${cm} 예상 임차</b></td><td class="n"><b>${pm} 임차</b></td><td class="n"><b>${cm} 예상 금액</b></td><td class="n"><b>${pm} 금액</b></td></tr>
+    ${o.svc.filter((s) => s.amt || s.pSum).map((s) => `<tr${s.n !== s.pn ? ' style="color:var(--warn)"' : ""}><td>${s.svc}</td><td class="n">${s.n}</td><td class="n">${s.pn}</td><td class="n">${s.expect.toFixed(1)}</td><td class="n">${s.pP}</td><td class="n">${fmt(s.amt)}</td><td class="n">${fmt(s.pSum)}</td></tr>`).join("")}
+    </table></details>`;
+  return h;
+}
+
+function otherBasis(c, f, inp, d) {
+  const man = (n) => ((n || 0) / 10000).toFixed(1);
+  const gaNote = state.round === "1차" ? ` · 1차 기본 ${gaDefault(state.month, c)}만불(${GA_1ST.months.includes(Number(state.month.slice(5))) ? "1·4·7·9월" : "평월"})` : "";
+  const row = (k, key) => `<tr><td>${k} (전월 ${man(d.prev[k])} · 3개월 평균 ${man(avg3(d, k))} · 포털 당월 ${man(d.cur[k])}만불${key === "ga" ? gaNote : ""})</td>
+    <td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-k="${key}" value="${inp[key]}"> 만불</td></tr>`;
+  return `<h3 style="margin-top:14px">운항외비용·일반관리비</h3><table>${row("운항외비용", "nonop")}${row("일반관리비(아)", "ga")}
+    <tr class="res"><td>영업이익(자:사-아)</td><td class="n">${fmt(f.v["영업이익(자:사-아)"])}</td></tr></table>`;
+}
+
+// Remark(특이사항): 세부 항목 중 전월 대비 ±50만불 이상 변한 것을 뽑고, 설명은 사용자가 적는다. 엑셀 Remark 시트로 나간다.
+const REMARK_MIN = 500000;
+function remarkRows(r) {
+  return ADJ_ITEMS().map((k) => ({ k, d: (r.f.v[k] || 0) - (r.p[k] || 0) })).filter((x) => Math.abs(x.d) >= REMARK_MIN);
+}
+const signMan = (n) => `${n >= 0 ? "+" : "−"}${Math.round(Math.abs(n) / 10000).toLocaleString("en-US")}만불`;
+// 줄 금액 표기(원본 Remark처럼 "+1230만불", " - 35만불")
+const manText = (a) => (a === "" || a === null || a === undefined || isNaN(Number(a)) ? "" : Number(a) >= 0 ? `+${Number(a)}만불` : ` - ${Math.abs(Number(a))}만불`);
+// 자동 설명 줄: 그 항목의 전월 대비 차이를 만든 서비스(실적검증 서비스별 금액, ±30만불 이상, 큰 순 3개)
+// 예: "PCI2 8월 289만불 → 9월 560만불" / +271만불
+const REMARK_SVC_MIN = 300000;
+function autoLines(m, c, k, r) {
+  r = r || { f: forecast(m, state.round, c, state.inputs[c.id]), p: prevCol(m, c) };
+  const S = DATA[m][c.id].svcAmt, i = S ? S.items.indexOf(k) : -1, cur = DATA[m][c.id].cur;
+  const mon = Number(m.slice(5)), pmon = Number(prevMonth(m).slice(5)), man = (n) => Math.round(n / 10000);
+  // ① 서비스별 금액이 거의 다 들어온 달(서비스 합계가 포털 당월의 80% 이상): 서비스별 차이 상위 3개
+  if (i >= 0) {
+    const tot = Object.values(S.v).reduce((a, x) => a + (x[i * 2] || 0), 0);
+    if (Math.abs(cur[k] || 0) > 0 && Math.abs(tot) >= Math.abs(cur[k]) * 0.8)
+      return Object.entries(S.v).map(([svc, a]) => ({ svc, cur: a[i * 2] || 0, prev: a[i * 2 + 1] || 0 }))
+        .map((x) => ({ ...x, d: x.cur - x.prev })).filter((x) => Math.abs(x.d) >= REMARK_SVC_MIN)
+        .sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3)
+        .map((x) => ({ t: `${x.svc} ${pmon}월 ${man(x.prev)}만불 → ${mon}월 ${man(x.cur)}만불`, a: man(x.d) }));
+  }
+  // ② 그 외(1차 등 당월 서비스별 금액이 아직 없는 달): 예상실적을 만든 규칙에서 설명을 뽑는다
+  return ruleLines(m, c, k, r);
+}
+// 서비스별 운임 증감: 이번달은 항차손익(선적량×평균운임) 서비스 합을 예상 운임 합계에 맞춰 비율 조정, 전월은 서비스별 실적(svcAmt 전월).
+// ±30만불 이상 서비스 큰 순 3개 → "PCI2 9월 560만불 → 10월 750만불"
+function svcFreightLines(m, c, fare) {
+  const F = DATA[m][c.id].svcFrt, S = DATA[m][c.id].svcAmt;
+  if (!F || !S) return [];
+  const i = S.items.indexOf("운임"), tot = Object.values(F).reduce((a, x) => a + x[1], 0);
+  if (i < 0 || !tot) return [];
+  const k = fare / tot, man = (n) => Math.round(n / 10000), mon = Number(m.slice(5)), pmon = Number(prevMonth(m).slice(5));
+  // 같은 항로가 달마다 다른 코드로 잡히는 서비스는 묶는다(원본 Remark 표기: "ADHS(SGX2)")
+  const SVC_ALIAS = { ADHS: "ADHS(SGX2)", SGX2: "ADHS(SGX2)" }, by = {};
+  for (const [svc, x] of Object.entries(F)) { const n = SVC_ALIAS[svc] || svc; (by[n] = by[n] || { cur: 0, prev: 0 }).cur += x[1] * k; }
+  for (const [svc, a] of Object.entries(S.v)) { const n = SVC_ALIAS[svc] || svc; (by[n] = by[n] || { cur: 0, prev: 0 }).prev += a[i * 2 + 1] || 0; }
+  return Object.entries(by).map(([svc, x]) => ({ svc, cur: x.cur, prev: x.prev }))
+    .map((x) => ({ ...x, d: x.cur - x.prev })).filter((x) => Math.abs(x.d) >= REMARK_SVC_MIN)
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3)
+    .map((x) => ({ t: `${x.svc} ${pmon}월 ${man(x.prev)}만불 → ${mon}월 ${man(x.cur)}만불`, a: man(x.d) }));
+}
+// 이번달 대선 중인 서비스·선박(대선 계약 A12): "KQS SWPC 대선" (일수·금액은 안 씀)
+function charterLines(m, c) {
+  const ym = ymOf(m), y = +ym.slice(0, 4), mo = +ym.slice(4), first = Date.UTC(y, mo - 1, 1), last = Date.UTC(y, mo, 0), out = [];
+  for (const [svc, vsl, hire, period] of DATA[m][c.id].charter || []) {
+    if (isOffset(c, svc)) continue;   // 상계 대선은 설명에서도 뺀다
+    const mt = String(period).match(/(\d{4})-(\d{2})-(\d{2})-(\d{4})-(\d{2})-(\d{2})/);
+    if (!mt) continue;
+    const a = Math.max(first, Date.UTC(+mt[1], +mt[2] - 1, +mt[3])), b = Math.min(last, Date.UTC(+mt[4], +mt[5] - 1, +mt[6]));
+    if (b < a) continue;
+    out.push({ t: `${svc} ${vsl} 대선`, a: "" });   // 일수·금액은 표시하지 않음(사용자 요청)
+  }
+  return out;
+}
+// 규칙 기반 설명 줄. a = 만불(전월 대비 기여분)
+function ruleLines(m, c, k, r) {
+  const f = r.f, p = r.p, v = f.v, d = (v[k] || 0) - (p[k] || 0), man = (n) => Math.round(n / 10000), D = DATA[m][c.id];
+  const pmon = Number(prevMonth(m).slice(5)), mon = Number(m.slice(5)), L = [];
+  const add = (t, a) => { if (Math.abs(a) >= 1 || a === null) L.push({ t, a: a === null ? "" : a }); };
+  const first = state.round === "1차";
+  if (k === "운임" && svcFreightLines(m, c, v["운임"]).length) {
+    svcFreightLines(m, c, v["운임"]).forEach((x) => L.push(x));
+  } else if (k === "운임") {
+    const perTeu = p["선적량(2)"] ? (p["운임"] || 0) / p["선적량(2)"] : 0, dv = (v["선적량(2)"] - p["선적량(2)"]) * perTeu;
+    add(`선적량 ${fmt(p["선적량(2)"])} → ${fmt(v["선적량(2)"])}TEU (물량 효과)`, man(dv));
+    add(`평균운임 $${fmt(p["평균운임"])} → $${fmt(v["평균운임"])} (단가 효과)`, man(d - dv));
+  } else if (k === "선복임대료" && first && f.rev && f.rev.info.long) {
+    const Lg = f.rev.info.long, prevLong = Lg.prevLong;
+    Lg.rows.filter((x) => x.on).sort((a, b) => b.amt - a.amt).slice(0, 3).forEach((x) => add(`장거리 임대 ${x.svc} ${x.vsl} ${x.vyg} ${man(x.amt)}만불`, null));
+    add(`장거리 임대 ${pmon}월 ${man(prevLong)}만불 → ${mon}월 ${man(Lg.fcst)}만불`, man(Lg.fcst - prevLong));
+  } else if (k === "하역비" && first && f.crg && f.crg.info.stvBase !== undefined && D.stvPrev) {
+    const i2 = f.crg.info;
+    add(`하역료(물량): 선적량 ${fmt(p["선적량(2)"])} → ${fmt(v["선적량(2)"])}TEU × TEU당 $${i2.stvUnit.toFixed(1)}`, man(i2.stvBase - D.stvPrev.base));
+    add(`추가비용 ${man(i2.stvExtra)}만불 (SGX2 트러킹 ${state.inputs[c.id].trucking}만불 포함, ${pmon}월 ${man(D.stvPrev.extra)}만불)`, man(i2.stvExtra - D.stvPrev.extra));
+  } else if (k === "장비이송비") {
+    add(`공컨 ${fmt(p["공컨테이너(3)"])} → ${fmt(v["공컨테이너(3)"])}TEU`, man(d));
+  } else if ((k === "항비" || k === "연료비") && first && f.opx) {
+    const key = k === "항비" ? ["port", "prevPort"] : ["fuel", "prevFuel"];
+    Object.entries(f.opx.svc).map(([svc, x]) => ({ svc, x, dd: x[key[0]] - x[key[1]] })).filter((y) => Math.abs(y.dd) >= REMARK_SVC_MIN)
+      .sort((a, b) => Math.abs(b.dd) - Math.abs(a.dd)).slice(0, 3)
+      .forEach((y) => add(`${y.svc} 운항 ${y.x.prevN} → ${y.x.n}항차`, man(y.dd)));
+  } else if (k === "선복임차료" && first && f.fix && f.fix.slot) {
+    f.fix.slot.svc.filter((x) => !isOffsetSlot(c, x.svc)).map((x) => ({ ...x, dd: x.amt - x.pSum })).filter((y) => Math.abs(y.dd) >= REMARK_SVC_MIN)
+      .sort((a, b) => Math.abs(b.dd) - Math.abs(a.dd)).slice(0, 3)
+      .forEach((y) => add(f.fix.slot.fromPl ? `${y.svc} ${pmon}월 ${man(y.pSum)}만불 → ${mon}월 ${man(y.amt)}만불` : `${y.svc} 타사선 ${y.pn} → ${y.n}항차`, man(y.dd)));
+  } else if ((k === "용선료" || k === "HIRE") && first && f.fix) {
+    add(`일수 ${f.fix.prevDays} → ${f.fix.days}일`, man(d));
+  } else if (k === "대선료") {   // 이번달 대선 중인 서비스·선박(계약 기준) + 흥아는 직접 입력값
+    charterLines(m, c).forEach((x) => L.push(x));
+    if (c.id === "hal" && man(v[k]) !== man(D.cur[k] || 0)) add(`직접 입력 ${man(v[k])}만불 (포털 당월 ${man(D.cur[k] || 0)}만불)`, man(v[k] - (D.cur[k] || 0)));
+    if (!L.length) add(`대선료 ${man(v[k])}만불 (${pmon}월 ${man(p[k])}만불)`, man(d));
+  } else if (["인센티브", "장비비", "운항외비용", "일반관리비(아)"].includes(k)) {
+    add(`${k.replace("(아)", "")} ${man(v[k])}만불 (${pmon}월 ${man(p[k])}만불)`, man(d));
+  } else if (first && [...AVG3, ...AVG3_CARGO].includes(k)) {
+    add(`${k} ${man(v[k])}만불 (${pmon}월 ${man(p[k])}만불)`, man(d));   // "평균" 표현은 쓰지 않음(사용자 요청)
+  } else {
+    add(`포털 당월 ${man(v[k])}만불 (${pmon}월 ${man(p[k])}만불)`, man(d));
+  }
+  // 규칙 줄이 하나도 안 나온 항목(큰 서비스 변동이 없는 등)은 금액 비교 한 줄
+  if (!L.length) L.push({ t: `${k.replace("(아)", "")} ${man(v[k])}만불 (${pmon}월 ${man(p[k])}만불)`, a: man(d) });
+  return L;
+}
+
+// Remark 항목 목록: 장금·흥아 짝이 되도록 두 회사의 항목을 합친다(한쪽에서 빼면 양쪽에서 빠짐)
+function remarkKeys(m) {
+  const want = new Set(), hide = new Set();
+  for (const c of CO) {
+    const inp = state.inputs[c.id], r = { f: forecast(m, state.round, c, inp), p: prevCol(m, c) };
+    remarkRows(r).forEach((x) => want.add(x.k));
+    (inp.remarkAdd || []).forEach((k) => want.add(k));
+    (inp.adj || []).forEach((a) => want.add(a.item));
+    Object.keys(inp.remark || {}).filter((k) => ((inp.remark || {})[k] || []).length).forEach((k) => want.add(k));
+    (inp.remarkHide || []).forEach((k) => hide.add(k));
+  }
+  return ADJ_ITEMS().filter((k) => want.has(k) && !hide.has(k));
+}
+// 회사 한 곳의 Remark 항목: [{ k, d(전월 대비), lines:[{t,a}], adj:[조정], autoText(자동 설명 사용 중) }]
+function remarkItems(c, r, inp) {
+  const auto = new Set(remarkRows(r).map((x) => x.k));
+  const adjBy = {}; for (const a of inp.adj || []) (adjBy[a.item] = adjBy[a.item] || []).push(a);
+  return remarkKeys(state.month).map((k) => {
+    let lines = (inp.remark || {})[k];
+    if (typeof lines === "string") lines = [{ t: lines, a: "" }];   // 이전 형식(설명 한 줄)
+    // 저장된 줄이 없으면 자동 설명(서비스별 차이), 그것도 없으면 빈 줄 하나. 고치면 그때 저장된다.
+    let autoText = false;
+    if (!lines) { lines = autoLines(state.month, c, k, r); autoText = lines.length > 0; }
+    if (!lines.length && !adjBy[k]) lines = [{ t: "", a: "" }];
+    return { k, d: (r.f.v[k] || 0) - (r.p[k] || 0), auto: auto.has(k), lines, adj: adjBy[k] || [], autoText };
+  });
+}
+
+// ── Remark 탭: 엑셀 Remark 시트와 같은 모양, 항목마다 장금|흥아가 같은 줄에 짝으로 ──
+function renderRemark(m, res) {
+  const mon = Number(m.slice(5)), pmon = Number(prevMonth(m).slice(5));
+  const esc = (v) => String(v ?? "").replace(/"/g, "&quot;");
+  const items = {}; CO.forEach((c) => (items[c.id] = remarkItems(c, res[c.id], state.inputs[c.id])));
+  const keys = remarkKeys(m);
+  const block = (c, x) => `<div class="rm-item">
+    <div class="rm-box"><span class="rm-name">${x.k}</span><span class="rm-total">${signMan(x.d)}</span>
+      <button class="rm-x" title="이 항목 빼기(장금·흥아 모두)" data-rco="${c.id}" data-rhide="${x.k}">×</button></div>
+    ${x.lines.map((l, i) => `<div class="rm-line"><span>-</span>
+      <input type="text" placeholder="설명" data-rco="${c.id}" data-ritem="${x.k}" data-ri="${i}" data-f="t" value="${esc(l.t)}">
+      <input type="number" class="yel" placeholder="만불" data-rco="${c.id}" data-ritem="${x.k}" data-ri="${i}" data-f="a" value="${esc(l.a)}">
+      <span class="rm-amt">${manText(l.a)}</span>
+      <button class="rm-x" title="줄 삭제" data-rco="${c.id}" data-ritem="${x.k}" data-rdel="${i}">×</button></div>`).join("")}
+    ${x.adj.map((a) => `<div class="rm-line rm-adj"><span>-</span><span class="rm-text">${a.memo || "(메모 없음)"} <span class="badge">조정</span></span><span class="rm-amt">${manText(a.amt)}</span></div>`).join("")}
+    <button class="btn ghost rm-add" data-rco="${c.id}" data-radd="${x.k}">+ 줄</button></div>`;
+  $("remarkCols").innerHTML = `<div class="card rm">
+    <div class="rm-pair">${CO.map((c) => `<div class="rm-head"><span class="rm-title">${c.name} ${mon}월 실적 특이사항</span><span class="rm-cmp">(${pmon}월대비)</span></div>`).join("")}</div>
+    ${keys.map((k) => `<div class="rm-pair">${CO.map((c) => block(c, items[c.id].find((x) => x.k === k))).join("")}</div>`).join("") || `<div class="note">${pmon}월 대비 ±50만불 이상 변한 항목이 없습니다.</div>`}
+    <div class="bar" style="margin-top:12px"><select data-rco="${CO[0].id}" data-rpick="1">${ADJ_ITEMS().filter((k) => !keys.includes(k)).map((k) => `<option>${k}</option>`).join("")}</select>
+      <button class="btn ghost" style="padding:6px 10px;font-size:12.5px" data-rco="${CO[0].id}" data-raddItem="1">항목 추가(장금·흥아)</button></div></div>`;
+}
+$("remarkCols").oninput = (e) => {
+  const t = e.target; if (!t.dataset.ritem) return;
+  const inp = state.inputs[t.dataset.rco], lines = remarkItems(CO.find((c) => c.id === t.dataset.rco), { f: forecast(state.month, state.round, CO.find((c) => c.id === t.dataset.rco), inp), p: prevCol(state.month, CO.find((c) => c.id === t.dataset.rco)) }, inp).find((x) => x.k === t.dataset.ritem).lines;
+  lines[t.dataset.ri][t.dataset.f] = t.dataset.f === "a" ? (t.value === "" ? "" : Number(t.value)) : t.value;
+  (inp.remark = inp.remark || {})[t.dataset.ritem] = lines;
+  const sel = `[data-rco="${t.dataset.rco}"][data-ritem="${t.dataset.ritem}"][data-ri="${t.dataset.ri}"][data-f="${t.dataset.f}"]`, pos = t.selectionStart;
+  render(); const n = document.querySelector(sel); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (err) {} }
+};
+$("remarkCols").onclick = (e) => {
+  const t = e.target, inp = t.dataset.rco && state.inputs[t.dataset.rco];
+  if (!inp) return;
+  const rm = (inp.remark = inp.remark || {});
+  // 아직 저장 안 된 항목은 화면에 보이던 자동 설명 줄부터 이어서 고친다
+  const norm = (k) => (rm[k] = typeof rm[k] === "string" ? [{ t: rm[k], a: "" }] : rm[k] || autoLines(state.month, CO.find((c) => c.id === t.dataset.rco), k));
+  if (t.dataset.radd) norm(t.dataset.radd).push({ t: "", a: "" });
+  else if (t.dataset.rdel !== undefined) norm(t.dataset.ritem).splice(Number(t.dataset.rdel), 1);
+  else if (t.dataset.rhide) for (const c of CO) { const x = state.inputs[c.id]; (x.remarkHide = x.remarkHide || []).push(t.dataset.rhide); x.remarkAdd = (x.remarkAdd || []).filter((k) => k !== t.dataset.rhide); }
+  else if (t.dataset.radditem) {
+    const k = document.querySelector(`[data-rco="${t.dataset.rco}"][data-rpick]`).value; if (!k) return;
+    for (const c of CO) { const x = state.inputs[c.id]; (x.remarkAdd = x.remarkAdd || []).push(k); x.remarkHide = (x.remarkHide || []).filter((y) => y !== k); }
+  } else return;
+  render();
+};
+
+// 엑셀 "항차 조정" 시트(원본 'ADHS 항차' 시트 양식): 항차 조정 탭에서 체크한 항차만. 없으면 null
+// 항차마다 [OP LINER | 서비스 | VESSEL | VOYAGE | 항차 종료일 | 예상운항이익(이번달 영향) | REMARK] + 아래 선적량·평균운임 줄, 맨 아래 Total
+function pullSheet(m) {
+  const mon = Number(m.slice(5)), nmon = Number(ymShift(ymOf(m), 1).slice(4)), man = (n) => `${n >= 0 ? "+" : "−"}${Math.round(Math.abs(n) / 10000).toLocaleString("en-US")}만불`;
+  const blocks = [], byKey = {}, total = {};
+  for (const mode of ["pull", "push"]) for (const c of CO) {
+    const rows = pullRows(m, c, mode) || [];
+    for (const r of rows.filter((x) => x.on)) {
+      const k = mode + "|" + r.key;
+      if (!byKey[k]) { byKey[k] = { mode, r, co: {} }; blocks.push(byKey[k]); }
+      const eff = mode === "pull" ? r.profit : -r.profit;   // 이번달 운항이익 영향
+      byKey[k].co[c.id] = { eff, teu: r.teu, avg: r.teu ? r.frt / r.teu : 0 };
+      total[c.id] = (total[c.id] || 0) + eff;
+    }
+  }
+  if (!blocks.length) return null;
+  // OP LINER: 그 항차를 자사 운항으로 보는 회사(장금=SKR, 흥아=HAS)
+  const opOf = (b) => {
+    for (const c of CO) { const x = ((pullRows(m, c, b.mode) || []).find((y) => y.key === b.r.key)); if (x && x.own) return c.id === "sinokor" ? "SKR" : "HAS"; }
+    return "타사";
+  };
+  const join = (b, f) => `(${CO.filter((c) => b.co[c.id]).map((c) => `${c.name}: ${f(b.co[c.id])}`).join(", ")})`;
+  const ws = {}, merges = [], F = (o = {}) => ({ name: "맑은 고딕", sz: 16, ...o });
+  const thin = { style: "thin", color: { rgb: "000000" } }, box = { top: thin, bottom: thin, left: thin, right: thin };
+  const yellow = { patternType: "solid", fgColor: { rgb: "FFFF00" } }, mid = { horizontal: "center", vertical: "center", wrapText: true };
+  const put = (c, r, cell, s = {}) => (ws[XLSX.utils.encode_cell({ c, r })] = { t: "s", v: "", ...cell, s: { font: F(), alignment: mid, border: box, ...s } });
+  const B = 1, H = 7;
+  put(B, 4, { v: `${mon}월 항차 조정 예상 실적` }, { font: F({ sz: 20, bold: true, color: { rgb: "FF0000" } }) });
+  for (let c = B + 1; c <= H; c++) put(c, 4, {});
+  merges.push({ s: { c: B, r: 4 }, e: { c: H, r: 4 } });
+  ["OP LINER", "서비스", "VESSEL", "VOYAGE", "항차 종료일", "예상운항이익", "REMARK"].forEach((h, i) => put(B + i, 5, { v: h }, i >= 5 ? { fill: yellow } : {}));
+  let r = 6;
+  for (const b of blocks) {
+    const ta = b.r.nextta, date = ta ? new Date(Date.UTC(+ta.slice(0, 4), +ta.slice(4, 6) - 1, +ta.slice(6, 8))) : null;
+    const remark = b.mode === "pull" ? `당기기: ${nmon}월 종료 항차를 ${mon}월로` : `미루기: ${mon}월 항차를 ${nmon}월로 (${mon}월 운항이익 ${join(b, (x) => man(-x.eff)).slice(1, -1)} 제외)`;
+    [opOf(b), b.r.svc, b.r.vsl, b.r.vyg].forEach((v, i) => put(B + i, r, { v }));
+    put(B + 4, r, date ? { t: "d", v: date, z: 'mm"월" dd"일"' } : { v: "" });
+    put(B + 5, r, { v: join(b, (x) => man(x.eff)) }, { fill: yellow });
+    put(B + 6, r, { v: remark });
+    put(B + 5, r + 1, { v: "선적량" }, { font: F({ bold: true }) });
+    put(B + 5, r + 2, { v: join(b, (x) => `${Math.round(x.teu).toLocaleString("en-US")}TEU`) });
+    put(B + 5, r + 3, { v: "평균운임" }, { font: F({ bold: true }) });
+    put(B + 5, r + 4, { v: join(b, (x) => `$${Math.round(x.avg).toLocaleString("en-US")}`) });
+    for (const c of [B, B + 1, B + 2, B + 3, B + 4, B + 6]) {   // 항차 정보·REMARK는 블록 높이만큼 세로 병합
+      for (let k = 1; k <= 4; k++) put(c, r + k, {});
+      merges.push({ s: { c, r }, e: { c, r: r + 4 } });
+    }
+    r += 5;
+  }
+  r++;
+  put(B, r, { v: "Total" }); for (let c = B + 1; c <= B + 4; c++) put(c, r, {});
+  merges.push({ s: { c: B, r }, e: { c: B + 4, r } });
+  const sum = CO.reduce((a, c) => a + (total[c.id] || 0), 0);
+  put(B + 5, r, { v: `${man(sum)} (${CO.filter((c) => c.id in total).map((c) => `${c.name}: ${man(total[c.id])}`).join(", ")})` });
+  put(B + 6, r, {});
+  ws["!ref"] = `A1:H${r + 1}`;
+  ws["!merges"] = merges;
+  ws["!cols"] = [{ wch: 2 }, { wch: 13.4 }, { wch: 11 }, { wch: 12.4 }, { wch: 12 }, { wch: 16.4 }, { wch: 48 }, { wch: 74 }];
+  ws["!rows"] = Array.from({ length: r + 1 }, (_, i) => ({ hpt: i === 4 ? 30.6 : 25.8 }));
+  return ws;
+}
+
+// 엑셀 Remark 시트(원본 양식: 장금 B~E, 흥아 G~J, 항목 상자 B:D 병합 + 빨간 굵은 금액 E, 아래로 "- 설명" / 금액)
+function remarkSheet(m) {
+  const mon = Number(m.slice(5)), pmon = Number(prevMonth(m).slice(5)), ws = {}, merges = [];
+  const font = (o = {}) => ({ name: "맑은 고딕", sz: 11, ...o });
+  const thin = { style: "thin", color: { rgb: "000000" } }, box = { top: thin, bottom: thin, left: thin, right: thin };
+  const put = (col, row, v, s) => (ws[XLSX.utils.encode_cell({ c: col, r: row })] = { t: "s", v, s });
+  const items = {}; CO.forEach((c) => (items[c.id] = remarkItems(c, { f: forecast(m, state.round, c, state.inputs[c.id]), p: prevCol(m, c) }, state.inputs[c.id])));
+  const linesOf = (x) => [...x.lines, ...x.adj.map((a) => ({ t: a.memo || "", a: a.amt }))].filter((l) => l.t || manText(l.a));   // 빈 줄은 뺀다
+  CO.forEach((c, ci) => {
+    const B = ci === 0 ? 1 : 6, E = B + 3;
+    put(B, 1, `${c.name} ${mon}월 실적 특이사항`, { font: font({ sz: 14, bold: true }) });
+    put(E, 2, `(${pmon}월대비)`, { font: font({ bold: true }), alignment: { horizontal: "center" } });
+  });
+  let r = 3;
+  for (const k of remarkKeys(m)) {   // 장금·흥아 같은 항목이 같은 행에 오게
+    let h = 0;
+    CO.forEach((c, ci) => {
+      const B = ci === 0 ? 1 : 6, E = B + 3, x = items[c.id].find((y) => y.k === k), lines = linesOf(x);
+      put(B, r, x.k, { font: font(), border: { ...box, right: undefined }, alignment: { horizontal: "center" } });
+      put(B + 1, r, "", { border: { top: thin, bottom: thin } });
+      put(B + 2, r, "", { border: { top: thin, bottom: thin, right: thin } });
+      put(E, r, signMan(x.d), { font: font({ bold: true, color: { rgb: "FF0000" } }), border: box, alignment: { horizontal: "right" } });
+      merges.push({ s: { c: B, r }, e: { c: B + 2, r } });
+      lines.forEach((l, i) => {
+        put(B, r + 1 + i, `- ${l.t || ""}`, { font: font({ sz: 10 }), alignment: { horizontal: "left" } });
+        if (manText(l.a)) put(E, r + 1 + i, manText(l.a), { font: font({ bold: true }), alignment: { horizontal: "right" } });
+      });
+      h = Math.max(h, lines.length);
+    });
+    r += 1 + h + 1;
+  }
+  const last = r;
+  ws["!ref"] = `A1:J${last + 1}`;
+  ws["!merges"] = merges;
+  ws["!cols"] = [{ wch: 1.7 }, { wch: 16.7 }, { wch: 14 }, { wch: 14 }, { wch: 11.7 }, { wch: 2.7 }, { wch: 16.7 }, { wch: 14 }, { wch: 14 }, { wch: 11.7 }];
+  return ws;
+}
+// 조정·특이사항: 항목별 일회성 금액(만불)과 메모. 엑셀 Remark 시트로 나간다.
+const ADJ_ITEMS = () => ITEMS.filter((k) => !SUMS[k] && !SHIP.includes(k));
+function adjBasis(c, inp) {
+  const rows = (inp.adj || []).map((a, i) => `<tr>
+    <td><select data-co="${c.id}" data-adj="${i}" data-f="item">${ADJ_ITEMS().map((k) => `<option ${k === a.item ? "selected" : ""}>${k}</option>`).join("")}</select></td>
+    <td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-adj="${i}" data-f="amt" value="${a.amt}"> 만불</td>
+    <td><input type="text" style="width:100%" placeholder="메모(예: ADHS 트러킹)" data-co="${c.id}" data-adj="${i}" data-f="memo" value="${(a.memo || "").replace(/"/g, "&quot;")}"></td>
+    <td><button class="btn ghost" style="padding:4px 8px" data-co="${c.id}" data-adjdel="${i}">삭제</button></td></tr>`).join("");
+  return `<h3 style="margin-top:14px">조정·특이사항</h3>
+    ${rows ? `<table>${rows}</table>` : `<div class="note">일회성 비용·수익을 항목에 더하고 메모를 남깁니다(빼려면 음수).</div>`}
+    <button class="btn ghost" style="margin-top:6px;padding:6px 10px;font-size:12.5px" data-co="${c.id}" data-adjadd="1">+ 조정 추가</button>`;
+}
+
+function revenueBasis(c, f, inp, d) {
+  const r = f.rev, v = f.v, i = r.info, L = i.long;
+  const man = (n) => (n / 10000).toLocaleString("en-US", { maximumFractionDigits: 1 });
+  let h = `<h3 style="margin-top:14px">매출</h3><table>
+    <tr><td>운임: 포털 당월 ${fmt(d.cur["운임"])} × (예상 선적량×평균운임 ÷ 포털 선적량×평균운임) ${i.fareRatio.toFixed(4)}</td><td class="n">${fmt(v["운임"])}</td></tr>`;
+  if (L) h += `<tr><td>선복임대료: 전월 실적 ${fmt(d.prev["선복임대료"])} − 전월 장거리 임대 ${fmt(L.prevLong)} + 장거리 예상 ${fmt(L.fcst)} (포털 당월 ${fmt(d.cur["선복임대료"])}은 참고)</td><td class="n">${fmt(v["선복임대료"])}</td></tr>`;
+  h += `<tr><td>타사선복화물수익·지체료등·기타수익: 최근 ${i.avgMonths.length}개월(${i.avgMonths.map((k) => Number(k.slice(5)) + "월").join("·")}) 평균</td>
+      <td class="n">${AVG3.map((k) => fmt(v[k])).join(" / ")}</td></tr>
+    <tr><td>인센티브 (포털 당월 ${man(d.cur["인센티브"] || 0)}만불)</td><td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-k="incentive" value="${inp.incentive}"> 만불</td></tr>`;
+  if (c.id === "hal") h += `<tr><td>대선료 (포털 당월 ${man(d.cur["대선료"] || 0)}만불)</td><td class="n"><input class="yel" type="number" step="1" data-co="${c.id}" data-k="charter" value="${inp.charter}"> 만불</td></tr>`;
+  h += `<tr class="res"><td>매출(가)</td><td class="n">${fmt(v["매출(가)"])}</td></tr></table>`;
+  if (L && L.rows.length) {
+    h += `<div class="lbl" style="margin-top:10px">장거리 임대 항차 (포함 기준: 다음 TA ≤ ${fmtTa(L.cut)}, 전월 임대 선박 또는 포털 금액 있음)</div>
+      <table><tr><td><b>포함</b></td><td><b>서비스</b></td><td><b>선박·항차</b></td><td><b>다음 TA</b></td><td class="n"><b>포털 금액</b></td><td class="n"><b>적용 금액</b></td></tr>`;
+    for (const x of L.rows) h += `<tr${x.on ? "" : ' style="color:var(--muted)"'}><td><input type="checkbox" data-co="${c.id}" data-flip="${x.key}" ${x.on ? "checked" : ""}></td>
+      <td>${x.svc}</td><td>${x.vsl} ${x.vyg}</td><td>${fmtTa(x.nextta)}${x.nextta && !x.inWin ? " (다음달)" : ""}</td>
+      <td class="n">${x.booked ? fmt(x.booked) : ""}</td><td class="n" title="${x.booked ? "포털 금액" : x.unit.from}">${fmt(x.amt)}${x.booked ? "" : ` <span class="note">(${x.unit.from})</span>`}</td></tr>`;
+    h += `</table>`;
+  }
+  return h;
+}
+
+function renderTable(m, res) {
+  const withFirst = CO.some((c) => res[c.id].first);
+  const pm = prevMonth(m);   // 전월 열 머리도 실제 월(YYYY-MM)로
+  const other = state.round === "1차" ? "2차" : "1차";
+  const sub = (lbl) => withFirst ? `<th>${lbl}</th><th>${pm}</th><th>차이</th><th>${other}</th><th>${other} 대비</th>` : `<th>${lbl}</th><th>${pm}</th><th>차이</th>`;
+  const span = withFirst ? 5 : 3;
+  // 원본 양식처럼 대분류·중분류 머리는 두 줄 병합, 대분류 칸은 그룹(선적정보·매출·화물변동비·운항변동비·운항고정비) 단위로 병합
+  // 열 너비 고정: 숫자 길이·차수·월에 따라 표 간격이 바뀌지 않게
+  const W = { grp: 90, item: 150, num: 120, gap: 14 };
+  const cols = [W.grp, W.item, ...CO.flatMap((c, i) => [...(i ? [W.gap] : []), ...Array(span).fill(W.num)])];
+  $("tbl").style.width = cols.reduce((a, b) => a + b, 0) + "px";
+  let h = `<colgroup>${cols.map((w) => `<col style="width:${w}px">`).join("")}</colgroup><thead><tr><th rowspan="2">대분류</th><th rowspan="2">중분류</th>${CO.map((c, i) => `${i ? '<th class="gap" rowspan="2"></th>' : ""}<th colspan="${span}">${c.name}</th>`).join("")}</tr>
+    <tr>${CO.map(() => sub(m)).join("")}</tr></thead><tbody>`;
+  const groupLen = {};
+  ITEMS.forEach((k, i) => { if (GROUP_AT[k]) { let n = 1; while (i + n < ITEMS.length && !GROUP_AT[ITEMS[i + n]]) n++; groupLen[k] = n; } });
+  for (const k of ITEMS) {
+    h += `<tr class="${SUMS[k] ? "sum" : ""}">${GROUP_AT[k] ? `<td class="grp" rowspan="${groupLen[k]}">${GROUP_AT[k]}</td>` : ""}<td>${k}</td>`;
+    CO.forEach((c, i) => {
+      const r = res[c.id], a = r.f.v[k], b = r.p[k], diff = a - b;
+      const cls = "calc";   // 1차·2차 같은 모양(예상 열은 굵게)
+      if (i) h += `<td class="gap"></td>`;
+      const adj = r.f.adjOf[k];
+      h += `<td class="n ${cls}"${adj ? ` title="조정 ${fmt(adj)} 포함"` : ""}>${adj ? '<span class="adjmark">조정</span> ' : ""}${fmt(a)}</td><td class="n">${fmt(b)}</td><td class="n ${diff < 0 ? "neg" : ""}">${fmt(diff)}</td>`;
+      if (withFirst) {
+        const f1 = r.first ? r.first[k] : null, d1 = f1 === null || f1 === undefined ? null : a - f1;
+        h += `<td class="n cmp">${fmt(f1)}</td><td class="n ${d1 < 0 ? "neg" : ""}">${fmt(d1)}</td>`;
+      }
+    });
+    h += `</tr>`;
+  }
+  // 합산: 원본처럼 이름은 장금 마지막 열, 값은 흥아 예상·전월·차이 열에
+  h += `<tr><td class="blank" colspan="${2 + span * 2 + 1}"></td></tr>`;
+  for (const [lbl, key] of [["합산운항이익", "운항이익(사:다-바)"], ["합산영업이익", "영업이익(자:사-아)"]]) {
+    const a = CO.reduce((s, c) => s + res[c.id].f.v[key], 0), b = CO.reduce((s, c) => s + res[c.id].p[key], 0);
+    h += `<tr class="tot"><td class="blank" colspan="${2 + span - 1}"></td><td class="tot-lbl">${lbl}</td><td class="gap"></td>
+      <td class="n">${fmt(a)}</td><td class="n">${fmt(b)}</td><td class="n ${a - b < 0 ? "neg" : ""}">${fmt(a - b)}</td>${span > 3 ? `<td class="blank" colspan="${span - 3}"></td>` : ""}</tr>`;
+  }
+  $("tbl").innerHTML = h + "</tbody>";
+  $("tblTitle").textContent = `${monthLabel(m)} 예상실적 ${state.round} (금액 단위: $)`;
+}
+function prevMonth(m) { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(5)) - 2; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`; }
+
+// ── 저장·백업 ──
+function currentValues() {
+  const m = state.month, out = {};
+  for (const c of CO) out[c.id] = forecast(m, state.round, c, state.inputs[c.id]).v;
+  return out;
+}
+$("save").onclick = () => {
+  const m = state.month;
+  if (store[m] && store[m][state.round] && !confirm(`${monthLabel(m)} ${state.round}가 이미 저장돼 있습니다. 덮어쓸까요?`)) return;
+  (store[m] = store[m] || {})[state.round] = { savedAt: new Date().toISOString(), portalFetchedAt: DATA[m].fetchedAt, inputs: state.inputs, values: currentValues() };
+  if (!saveStore(store)) alert("브라우저 저장에 실패했습니다. '백업 내보내기'로 파일을 받아 두세요.");
+  render();
+};
+$("backup").onclick = () => {
+  const blob = new Blob([JSON.stringify(store, null, 1)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `예상실적_저장_${new Date().toISOString().slice(0, 10)}.json`; a.click();
+};
+$("restoreBtn").onclick = () => $("restore").click();
+$("restore").onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then((t) => { const s = JSON.parse(t); for (const m in s) store[m] = Object.assign(store[m] || {}, s[m]); saveStore(store); state.inputs = defaultInputs(state.month, state.round); render(); })
+    .catch(() => alert("백업 파일을 읽지 못했습니다."));
+};
+
+// ── 엑셀: 원본 양식처럼 차이·합계는 수식으로 ──
+$("excel").onclick = () => {
+  const m = state.month, cols = { sinokor: ["C", "D", "E"], hal: ["G", "H", "I"] };
+  const ws = {}, set = (ref, cell) => (ws[ref] = cell);
+  set("A1", { t: "s", v: "대분류" }); set("B1", { t: "s", v: "중분류" }); set("C1", { t: "s", v: "장금" }); set("G1", { t: "s", v: "흥아" });
+  for (const c of CO) { const [a, b, d] = cols[c.id]; set(a + "2", { t: "s", v: m }); set(b + "2", { t: "s", v: prevMonth(m) }); set(d + "2", { t: "s", v: "차이" }); }
+  const rowOf = {}; ITEMS.forEach((k, i) => (rowOf[k] = i + 3));
+  const vals = currentValues(), prevs = {}; CO.forEach((c) => (prevs[c.id] = prevCol(m, c)));
+  ITEMS.forEach((k) => {
+    const r = rowOf[k];
+    if (GROUP_AT[k]) set("A" + r, { t: "s", v: GROUP_AT[k] });
+    set("B" + r, { t: "s", v: k });
+    for (const c of CO) {
+      const [a, b, d] = cols[c.id], s = SUMS[k];
+      for (const [col, v] of [[a, vals[c.id][k]], [b, prevs[c.id][k]]]) {
+        if (s && s.kids) set(col + r, { t: "n", v, f: `SUM(${col}${rowOf[s.kids[0]]}:${col}${rowOf[s.kids[s.kids.length - 1]]})` });
+        else if (s) { const refs = {}; for (const x in rowOf) refs[x] = col + rowOf[x]; set(col + r, { t: "n", v, f: s.xl(refs) }); }
+        else set(col + r, { t: "n", v: Math.round(v || 0) });
+      }
+      set(d + r, { t: "n", v: vals[c.id][k] - prevs[c.id][k], f: `${a}${r}-${b}${r}` });
+    }
+  });
+  const op = rowOf["운항이익(사:다-바)"], ol = rowOf["영업이익(자:사-아)"], last = ol + 3;
+  // 합산 줄: 수식과 함께 값도 넣는다(다운로드 파일은 '보호된 보기'에서 다시 계산되지 않아 값이 없으면 빈칸으로 보임)
+  const both = (src, k) => CO.reduce((a, c) => a + (src[c.id][k] || 0), 0);
+  for (const [r, lbl, k, kr] of [[ol + 2, "합산운항이익", "운항이익(사:다-바)", op], [last, "합산영업이익", "영업이익(자:사-아)", ol]]) {
+    const a = both(vals, k), b = both(prevs, k);
+    set("E" + r, { t: "s", v: lbl });
+    set("G" + r, { t: "n", v: a, f: `C${kr}+G${kr}` }); set("H" + r, { t: "n", v: b, f: `D${kr}+H${kr}` }); set("I" + r, { t: "n", v: a - b, f: `G${r}-H${r}` });
+  }
+  for (const ref in ws) if (ws[ref].t === "n") ws[ref].z = "#,##0";
+  // 원본 양식의 병합: 대분류·중분류 머리 두 줄, 회사명 세 칸, 대분류 그룹
+  const merges = ["A1:A2", "B1:B2", "C1:E1", "G1:I1"].map((x) => XLSX.utils.decode_range(x));
+  ITEMS.forEach((k, i) => {
+    if (!GROUP_AT[k]) return;
+    let n = 1; while (i + n < ITEMS.length && !GROUP_AT[ITEMS[i + n]]) n++;
+    if (n > 1) merges.push({ s: { c: 0, r: rowOf[k] - 1 }, e: { c: 0, r: rowOf[k] - 1 + n - 1 } });
+  });
+  ws["!merges"] = merges;
+  // 서식: 맑은 고딕, 표 전체 얇은 테두리, 머리·합산 노란 칸(원본 FFFFCC), 가운데 정렬, 금액 굵게
+  const thin = { style: "thin", color: { rgb: "000000" } }, box = { top: thin, bottom: thin, left: thin, right: thin };
+  const yellow = { patternType: "solid", fgColor: { rgb: "FFFFCC" } };
+  const style = (ref, o) => { ws[ref] = ws[ref] || { t: "s", v: "" }; ws[ref].s = { font: { name: "맑은 고딕", sz: 10 }, alignment: { horizontal: "center", vertical: "center" }, border: box, ...o }; };
+  for (let r = 1; r <= ol; r++) for (const col of ["A", "B", "C", "D", "E", "G", "H", "I"]) {
+    const head = r <= 2, isNum = !head && "CDEGHI".includes(col);
+    style(col + r, { font: { name: "맑은 고딕", sz: head && (col === "C" || col === "G") && r === 1 ? 12 : isNum ? 11 : 10, bold: head || col === "A" || isNum }, ...(head ? { fill: yellow } : {}) });
+  }
+  for (const r of [ol + 2, last]) for (const col of ["E", "G", "H", "I"]) style(col + r, { font: { name: "맑은 고딕", sz: col === "E" ? 10 : 11, bold: true }, fill: yellow });
+  ws["!ref"] = `A1:I${last}`;
+  ws["!cols"] = [{ wch: 10 }, { wch: 18 }, { wch: 13 }, { wch: 13 }, { wch: 12 }, { wch: 3 }, { wch: 13 }, { wch: 13 }, { wch: 12 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `${Number(m.slice(5))}월 ${state.round}`);
+  XLSX.utils.book_append_sheet(wb, remarkSheet(m), "Remark");
+  const ps = pullSheet(m);   // 항차 조정 탭에서 체크한 항차가 있을 때만
+  if (ps) XLSX.utils.book_append_sheet(wb, ps, "항차 조정");
+  XLSX.writeFile(wb, `장금 흥아 ${m.slice(0, 4)}년 ${Number(m.slice(5))}월 예상 실적 ${state.round}.xlsx`);
+};
+
+// ── 항차 조정 탭 ──
+// 당기기 = 다음 TA가 다음달 6~15일(이번달 컷 직후)인 항차를 이번달로 → 그 항차 운항이익만큼 이번달 +
+// 미루기 = 이번달 실적 항차 중 다음 TA가 이번달 26일~다음달 5일(컷 직전)인 항차를 다음달로 → 그 항차 운항이익만큼 이번달 −
+// 예상 운항이익 = 운임(항차손익 선적량×평균운임) + 선적량 × (전월 서비스 기타매출/TEU − 화물변동비/TEU) − 항차당 운항원가(자사선/타사선 구분)
+const PULL_KEY = "forecast:pull:v1";   // { 월: { 회사: [당기기 키], "push|회사": [미루기 키] } }
+let pullSel = (() => { try { return JSON.parse(localStorage.getItem(PULL_KEY)) || {}; } catch (e) { return {}; } })();
+const savePull = () => { try { localStorage.setItem(PULL_KEY, JSON.stringify(pullSel)); } catch (e) {} };
+const selKey = (mode, co) => (mode === "push" ? "push|" + co : co);
+function pullRows(m, c, mode) {
+  const P = DATA[m][c.id].pull;
+  if (!P || (mode === "push" && !P.push)) return null;
+  const end = ymOf(m) + "31", sel = new Set(((pullSel[m] || {})[selKey(mode, c.id)]) || []);
+  return (mode === "push" ? P.push : P.rows).map(([svc, vsl, vyg, td, nextta, op, teu, frt]) => {
+    const s = P.svc[svc], key = svc + "|" + vsl + "|" + vyg;
+    const r = { key, svc, vsl, vyg, td, nextta, own: op === "Y", teu, frt, hasSvc: !!(s && s[1]) };
+    if (r.hasSvc) {
+      const [, ship, sfrt, rev, cargo, opc, slotOut = 0, charter = 0, slotIn = 0] = s;
+      // 기타매출: 선복임대료·대선료는 특정 자사선 항차에만 붙으므로 TEU당 배분에서 뺀다
+      r.otherRev = (teu * (rev - sfrt - slotOut - charter)) / ship; r.cargo = (teu * cargo) / ship;
+      // 운항원가: 타사 운항선 = 전월 항차당 선복임차료, 자사 운항선 = (운항원가 − 선복임차료) ÷ 전월 비용 발생 항차
+      const si = (DATA[m][c.id].slotIn || {})[svc], ps = ((DATA[m][c.id].opx || {}).prevSvc || {})[svc];
+      r.opc = r.own ? (ps && ps[0] ? (opc - slotIn) / ps[0] : 0) : (si && si[4] ? si[5] / si[4] : 0);
+    } else { r.otherRev = 0; r.cargo = 0; r.opc = 0; }
+    r.profit = r.frt + r.otherRev - r.cargo - r.opc;
+    r.tdIn = !!td && td <= end; r.on = sel.has(key);
+    return r;
+  }).sort((a, b) => (mode === "push" ? a.profit - b.profit : b.profit - a.profit));   // 미루기는 적자 큰 순
+}
+// 화면이 길어지지 않게: 한 회사씩, 상위 PULL_TOP개(체크한 항차는 항상 표시), 금액 내역은 마우스를 올리면 보임
+const PULL_TOP = 15;
+let pullCo = "sinokor", pullAll = { pull: false, push: false };
+function pullTable(c, rows, mode, shown) {
+  const list = pullAll[mode] ? shown : shown.filter((r, i) => i < PULL_TOP || r.on);
+  const tip = (r) => `운임 ${fmt(r.frt)} + 기타매출 ${fmt(r.otherRev)} − 화물변동비 ${fmt(r.cargo)} − 운항원가 ${fmt(r.opc)}${r.hasSvc ? "" : " (전월 서비스 실적이 없어 비용 0)"}`;
+  return `<div class="card"><div class="xl-wrap"><table class="xl" style="width:100%">
+    <tr><th>선택</th><th>서비스</th><th>선박·항차</th><th>출항</th><th>다음 TA</th><th>운항</th><th>예상 운항이익</th></tr>
+    ${list.map((r) => `<tr${r.on ? ' style="background:#fff8d6"' : ""}><td><input type="checkbox" data-pull="${c.id}" data-mode="${mode}" data-key="${r.key}" ${r.on ? "checked" : ""}></td>
+      <td>${r.svc}</td><td>${r.vsl} ${r.vyg}</td><td>${fmtTa(r.td)}</td><td>${fmtTa(r.nextta)}</td><td>${r.own ? "자사" : "타사"}</td>
+      <td class="n ${r.profit < 0 ? "neg" : ""}" title="${tip(r)}"><b>${fmt(r.profit)}</b>${r.hasSvc ? "" : " *"}</td></tr>`).join("")}
+    </table></div>
+    ${shown.length > PULL_TOP ? `<button class="btn ghost" style="margin-top:8px;padding:5px 10px;font-size:12.5px" data-more="${mode}">${pullAll[mode] ? `상위 ${PULL_TOP}개만` : `전체 보기 (${shown.length}항차)`}</button>` : ""}
+    <span class="note" style="margin-left:8px">후보 ${rows.length}항차 중 ${shown.length}항차 해당</span></div>`;
+}
+function renderPull(m, res) {
+  const ym = ymOf(m), nym = ymShift(ym, 1), mon = Number(m.slice(5)), nmon = Number(nym.slice(4));
+  $("pullTitle").textContent = `항차 조정 (${state.round} 기준)`;
+  $("pullNote").innerHTML = `당기기 = 다음 TA가 ${fmtTa(nym + "06")}~${fmtTa(nym + "15")}(컷 ${fmtTa(nym + "05")} 직후)인 항차를 ${mon}월로 → 그 항차 운항이익만큼 ${mon}월 +.
+    미루기 = ${mon}월 실적 항차 중 다음 TA가 ${fmtTa(ym + "26")}~${fmtTa(nym + "05")}(컷 직전)인 항차를 ${nmon}월로 → 그 항차 운항이익만큼 ${mon}월 − (적자 항차를 보내면 ${mon}월이 오름).<br>
+    예상 운항이익 = 운임(항차손익 선적량×평균운임) + 선적량×(전월 서비스 기타매출/TEU − 화물변동비/TEU) − 항차당 운항원가
+    (타사 운항선: 전월 항차당 선복임차료, 자사 운항선: 전월 항차당 선박비용). 기타매출에서 선복임대료·대선료는 뺍니다.
+    서비스 평균으로 잡은 추정이며 예상실적 표에는 반영하지 않습니다.`;
+  const coName = CO.find((c) => c.id === pullCo).name;
+  $("pullHead").textContent = `${coName} 당기기: ${nmon}월 → ${mon}월 (운항이익 큰 순)`;
+  $("pushHead").textContent = `${coName} 미루기: ${mon}월 → ${nmon}월 (적자 큰 순)`;
+  const tdOnly = $("pullTdOnly").checked, teuOnly = $("pullTeuOnly").checked;
+  let sumHtml = "", tot = { op: 0, add: 0, sub: 0 };
+  const html = { pull: "", push: "" };
+  for (const c of CO) {
+    const sums = {};
+    for (const mode of ["pull", "push"]) {
+      const rows = pullRows(m, c, mode);
+      if (!rows) { if (c.id === pullCo) html[mode] += `<div class="card"><h2>${c.name}</h2><div class="msg-err">후보 데이터가 없습니다. 수집 스크립트를 다시 실행하세요.</div></div>`; sums[mode] = { n: 0, p: 0 }; continue; }
+      const shown = rows.filter((r) => r.on || ((mode === "push" || !tdOnly || r.tdIn) && (!teuOnly || r.teu > 0)));
+      const picked = rows.filter((r) => r.on);
+      sums[mode] = { n: picked.length, p: picked.reduce((a, r) => a + r.profit, 0) };
+      if (c.id === pullCo) html[mode] += pullTable(c, rows, mode, shown);
+    }
+    const op = res[c.id].f.v["운항이익(사:다-바)"], after = op + sums.pull.p - sums.push.p;
+    tot.op += op; tot.add += sums.pull.p; tot.sub += sums.push.p;
+    sumHtml += `<tr><td>${c.name}</td><td class="n">${sums.pull.n}</td><td class="n">${fmt(sums.pull.p)}</td><td class="n">${sums.push.n}</td><td class="n ${-sums.push.p < 0 ? "neg" : ""}">${fmt(-sums.push.p || 0)}</td>
+      <td class="n">${fmt(op)}</td><td class="n"><b>${fmt(after)}</b></td><td class="n ${after - op < 0 ? "neg" : ""}">${fmt(after - op)}</td></tr>`;
+  }
+  $("pullCo").innerHTML = CO.map((c) => `<button class="pill ${c.id === pullCo ? "on" : ""}" data-pco="${c.id}">${c.name}</button>`).join("");
+  $("pullTables").innerHTML = html.pull;
+  $("pushTables").innerHTML = html.push;
+  const totAfter = tot.op + tot.add - tot.sub;
+  $("pullSum").innerHTML = `<table class="xl"><tr><th>회사</th><th>당기기 항차</th><th>당기기 효과</th><th>미루기 항차</th><th>미루기 효과</th><th>예상 운항이익</th><th>조정 후</th><th>차이</th></tr>${sumHtml}
+    <tr class="sum"><td>합산</td><td></td><td class="n">${fmt(tot.add)}</td><td></td><td class="n ${-tot.sub < 0 ? "neg" : ""}">${fmt(-tot.sub || 0)}</td><td class="n">${fmt(tot.op)}</td><td class="n">${fmt(totAfter)}</td><td class="n ${totAfter - tot.op < 0 ? "neg" : ""}">${fmt(totAfter - tot.op)}</td></tr></table>`;
+}
+$("pullCo").onclick = (e) => { if (e.target.dataset.pco) { pullCo = e.target.dataset.pco; render(); } };
+$("pullTables").onclick = $("pushTables").onclick = (e) => { const md = e.target.dataset.more; if (md) { pullAll[md] = !pullAll[md]; render(); } };
+$("pullTables").onchange = $("pushTables").onchange = (e) => {
+  const t = e.target; if (!t.dataset.pull) return;
+  const m = state.month, k = selKey(t.dataset.mode, t.dataset.pull), cur = new Set((((pullSel[m] = pullSel[m] || {})[k]) || []));
+  t.checked ? cur.add(t.dataset.key) : cur.delete(t.dataset.key);
+  pullSel[m][k] = [...cur]; savePull(); render();
+};
+$("pullTdOnly").onchange = $("pullTeuOnly").onchange = () => render();
+$("pullClear").onclick = () => { delete pullSel[state.month]; savePull(); render(); };
+document.querySelector(".topbar-row2").onclick = (e) => {
+  const tab = e.target.dataset.tab; if (!tab) return;
+  document.querySelectorAll(".topbar-row2 .pill").forEach((p) => p.classList.toggle("on", p.dataset.tab === tab));
+  for (const x of ["main", "basis", "pull", "remark"]) $("tab-" + x).hidden = tab !== x;
+};
+
+// ── 화면 조작 ──
+$("month").innerHTML = Object.keys(DATA).sort().reverse().map((k) => `<option value="${k}">${monthLabel(k)}</option>`).join("");
+$("month").onchange = (e) => { state.month = e.target.value; state.inputs = defaultInputs(state.month, state.round); render(); };
+$("cmpOther").onchange = () => render();
+$("rounds").onclick = (e) => { const r = e.target.dataset.r; if (!r) return; state.round = r; state.inputs = defaultInputs(state.month, r); render(); };
+$("basis").oninput = (e) => {
+  const t = e.target; if (!t.dataset.co) return;
+  if (t.dataset.flip) {   // 장거리 항차 포함 여부: 기본값과 다르게 바꾼 항차만 기억
+    const inp = state.inputs[t.dataset.co], s = new Set(inp.longFlip || []);
+    s.has(t.dataset.flip) ? s.delete(t.dataset.flip) : s.add(t.dataset.flip);
+    inp.longFlip = [...s]; render(); return;
+  }
+  let sel;
+  if (t.dataset.adj !== undefined) {   // 조정·특이사항 행
+    const a = state.inputs[t.dataset.co].adj[t.dataset.adj];
+    a[t.dataset.f] = t.dataset.f === "amt" ? Number(t.value) || 0 : t.value;
+    sel = `[data-co="${t.dataset.co}"][data-adj="${t.dataset.adj}"][data-f="${t.dataset.f}"]`;
+  } else {
+    state.inputs[t.dataset.co][t.dataset.k] = Number(t.value) || 0;
+    // 소수점 입력 중("2."·"-"·빈칸)에는 다시 그리지 않는다(다시 그리면 점이 지워짐)
+    if (/^-?\d*\.$|^-?$/.test(t.value.trim())) return;
+    sel = `[data-co="${t.dataset.co}"][data-k="${t.dataset.k}"]`;
+  }
+  const pos = t.selectionStart;
+  render(); const n = document.querySelector(sel); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (err) {} }
+};
+$("basis").onclick = (e) => {
+  const t = e.target, inp = t.dataset.co && state.inputs[t.dataset.co];
+  if (!inp) return;
+  if (t.dataset.adjadd) { (inp.adj = inp.adj || []).push({ item: "하역비", amt: 0, memo: "" }); render(); }
+  else if (t.dataset.adjdel !== undefined) { inp.adj.splice(Number(t.dataset.adjdel), 1); render(); }
+};
+if (state.month) { $("month").value = state.month; state.inputs = defaultInputs(state.month, state.round); }
+render();
+</script>
+</body>
+</html>
