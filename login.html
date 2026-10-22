@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>로그인</title>
+<style>
+  :root { --brand:#1f8fe0; --ink:#1e2a36; --muted:#6b7a89; --line:#dfe6ee; --bg:#f3f7fb; --bad:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"맑은 고딕","Malgun Gothic",sans-serif; color:var(--ink); background:var(--bg); }
+  .top { background:var(--brand); color:#fff; padding:14px 24px; font-size:18px; font-weight:700; }
+  .card { max-width:420px; margin:48px auto; background:#fff; border:1px solid var(--line); border-radius:14px; padding:28px; }
+  h1 { margin:0 0 6px; font-size:20px; }
+  p.sub { margin:0 0 18px; color:var(--muted); font-size:14px; line-height:1.6; }
+  label { display:block; margin:14px 0 6px; font-size:14px; font-weight:700; }
+  input { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:8px; font-size:15px; font-family:inherit; }
+  input:focus { outline:2px solid #b9dcf6; border-color:var(--brand); }
+  button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:999px; background:var(--brand); color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; }
+  button[disabled] { opacity:.6; cursor:wait; }
+  .msg { margin-top:14px; font-size:14px; min-height:20px; color:var(--bad); }
+  .apply { margin-top:22px; padding-top:18px; border-top:1px solid var(--line); text-align:center; font-size:14px; color:var(--muted); }
+  .apply a { display:inline-block; margin-top:8px; padding:10px 24px; border-radius:999px; border:1px solid var(--brand); color:var(--brand); font-weight:700; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="top">실적 검증</div>
+<div class="card">
+  <h1>로그인</h1>
+  <p class="sub">승인된 사내 메일 계정만 이용할 수 있습니다.</p>
+  <form id="f" autocomplete="on">
+    <label for="email">사내 메일</label>
+    <input id="email" name="username" type="email" placeholder="아이디@sinokor.co.kr" autocomplete="username" required>
+    <label for="pw">비밀번호</label>
+    <input id="pw" name="password" type="password" autocomplete="current-password" required>
+    <button id="go" type="submit">로그인</button>
+    <div id="msg" class="msg" role="alert"></div>
+  </form>
+  <div class="apply">
+    계정이 없나요?<br>
+    <a href="/apply.html">접근 신청하기</a>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+$("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("msg").textContent = ""; $("go").disabled = true; $("go").textContent = "확인 중...";
+  try {
+    const res = await fetch("/__login", { method:"POST", headers:{ "Content-Type":"application/json" }, credentials:"same-origin",
+      body: JSON.stringify({ email: $("email").value, password: $("pw").value }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      const n = params.get("next") || "/index.html";
+      location.replace(n.startsWith("/") && !n.startsWith("//") ? n : "/index.html");
+      return;
+    }
+    $("msg").textContent = data.error || "로그인하지 못했습니다.";
+  } catch (err) {
+    $("msg").textContent = "서버에 연결하지 못했습니다. 잠시 뒤 다시 시도하세요.";
+  }
+  $("go").disabled = false; $("go").textContent = "로그인";
+});
+</script>
+</body>
+</html>

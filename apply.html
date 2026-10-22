@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>접근 신청</title>
+<style>
+  :root { --brand:#1f8fe0; --ink:#1e2a36; --muted:#6b7a89; --line:#dfe6ee; --bg:#f3f7fb; --ok:#1a8a50; --bad:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"맑은 고딕","Malgun Gothic",sans-serif; color:var(--ink); background:var(--bg); }
+  .top { background:var(--brand); color:#fff; padding:14px 24px; font-size:18px; font-weight:700; }
+  .card { max-width:560px; margin:28px auto; background:#fff; border:1px solid var(--line); border-radius:14px; padding:26px; }
+  h1 { margin:0 0 6px; font-size:20px; }
+  p.sub { margin:0 0 20px; color:var(--muted); font-size:14px; line-height:1.6; }
+  label { display:block; margin:14px 0 6px; font-size:14px; font-weight:700; }
+  input[type=email], input[type=password] { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:8px; font-size:15px; font-family:inherit; }
+  input:focus { outline:2px solid #b9dcf6; border-color:var(--brand); }
+  button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:999px; background:var(--brand); color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; }
+  button.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); margin-top:10px; }
+  .msg { margin-top:14px; font-size:14px; min-height:20px; }
+  .msg.err { color:var(--bad); }
+  .out { display:none; margin-top:22px; padding-top:18px; border-top:1px solid var(--line); }
+  .out.show { display:block; }
+  textarea { width:100%; height:110px; padding:10px; border:1px solid var(--line); border-radius:8px; font-family:Consolas,monospace; font-size:13px; word-break:break-all; background:#f8fafc; }
+  ol { padding-left:20px; line-height:1.8; font-size:14px; }
+  .note { margin-top:18px; padding:12px 14px; background:#f1f7fc; border-radius:10px; font-size:13px; color:var(--muted); line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="top">접근 신청</div>
+<div class="card">
+  <h1>실적 검증 사이트 접근 신청</h1>
+  <p class="sub">사내 메일(@sinokor.co.kr)과 사용할 비밀번호를 입력하면 <b>신청 코드</b>가 만들어집니다. 그 코드를 관리자에게 전달하면, 관리자가 확인한 뒤 승인합니다. 승인되면 이 메일과 비밀번호로 접속할 수 있습니다.</p>
+
+  <label for="email">사내 메일</label>
+  <input id="email" type="email" placeholder="아이디@sinokor.co.kr" autocomplete="username">
+  <label for="pw">비밀번호 (10자 이상)</label>
+  <input id="pw" type="password" autocomplete="new-password">
+  <label for="pw2">비밀번호 확인</label>
+  <input id="pw2" type="password" autocomplete="new-password">
+  <button id="go" type="button">신청 코드 만들기</button>
+  <div id="msg" class="msg"></div>
+
+  <div id="out" class="out">
+    <b>신청 코드가 만들어졌습니다</b>
+    <ol>
+      <li>아래 코드를 <b>복사</b>해서 관리자에게 사내 메신저나 메일로 보내세요.</li>
+      <li>관리자가 본인임을 확인하고 승인하면 연락이 옵니다.</li>
+      <li>승인 후 사이트에 접속하면 나오는 창에 <b>이 메일</b>과 <b>방금 정한 비밀번호</b>를 입력하세요.</li>
+    </ol>
+    <textarea id="code" readonly></textarea>
+    <button id="copy" type="button" class="ghost">코드 복사</button>
+  </div>
+
+  <div class="note">
+    · 비밀번호 원문은 서버에 보내지거나 저장되지 않습니다. 위 코드는 암호화된 값이라 보내도 안전합니다.<br>
+    · 비밀번호를 잊으면 같은 방법으로 다시 신청하면 됩니다(관리자가 이전 신청을 교체).<br>
+    · 사내 메일이 아니거나 관리자가 모르는 사람은 승인되지 않습니다.<br>
+    · 이미 승인받았다면 <a href="/login.html">로그인 화면</a>으로 이동하세요.
+  </div>
+</div>
+<script>
+const ITER = 20000;   // middleware.js 와 같은 값이어야 한다
+const enc = new TextEncoder();
+const b64u = (u8) => btoa(String.fromCharCode.apply(null, u8)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const $ = (id) => document.getElementById(id);
+const err = (t) => { $("msg").className = "msg err"; $("msg").textContent = t; $("out").classList.remove("show"); };
+
+async function makeCode(email, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const hash = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: salt, iterations: ITER }, key, 256));
+  return email + ":" + b64u(salt) + "." + b64u(hash);
+}
+
+$("go").addEventListener("click", async () => {
+  const email = $("email").value.trim().toLowerCase(), pw = $("pw").value, pw2 = $("pw2").value;
+  $("msg").className = "msg"; $("msg").textContent = "";
+  if (!/^[a-z0-9._%+-]+@sinokor\.co\.kr$/.test(email)) return err("사내 메일(@sinokor.co.kr)만 신청할 수 있습니다.");
+  if (pw.length < 10) return err("비밀번호는 10자 이상이어야 합니다.");
+  if (pw !== pw2) return err("비밀번호 확인이 일치하지 않습니다.");
+  if (!(window.crypto && crypto.subtle)) return err("이 브라우저에서는 신청 코드를 만들 수 없습니다. 최신 Chrome/Edge로 접속하세요.");
+  try {
+    $("code").value = await makeCode(email, pw);
+    $("out").classList.add("show");
+    $("pw").value = ""; $("pw2").value = "";
+  } catch (e) { err("코드를 만들지 못했습니다: " + e.message); }
+});
+$("copy").addEventListener("click", () => {
+  const t = $("code"); t.select();
+  try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand("copy"); }
+  $("copy").textContent = "복사됨 ✔"; setTimeout(() => { $("copy").textContent = "코드 복사"; }, 1500);
+});
+</script>
+</body>
+</html>
