@@ -1,4 +1,4 @@
-// 접근 제한(전용 로그인 화면 + 로그인 쿠키).
+// 접근 제한(전용 로그인 화면 + 로그인 쿠키). 예상실적 사이트용: 첫 화면이 /예상실적.html 이다.
 // - 버셀 환경변수 ACCESS_USERS: 관리자가 승인해서 붙인 "이메일:솔트.해시"를 쉼표로 이어 붙인 값. 여기 있는 사람만 들어올 수 있다.
 // - 로그인 없이 열리는 곳: /login.html, /apply.html, /__login(로그인 처리), /__logout.
 // - 그 밖의 모든 파일은 로그인 쿠키가 있어야 한다. 쿠키가 없으면 페이지는 /login.html 로 보내고, 데이터 파일은 401.
@@ -74,7 +74,7 @@ const getCookie = (request) => {
   return m ? m[1] : "";
 };
 
-const safeNext = (n) => (typeof n === "string" && n.startsWith("/") && !n.startsWith("//") && !n.startsWith("/__") && !n.includes("\\") ? n : "/index.html");
+const safeNext = (n) => (typeof n === "string" && n.startsWith("/") && !n.startsWith("//") && !n.startsWith("/__") && !n.includes("\\") ? n : "/예상실적.html");
 
 export default async function middleware(request) {
   const url = new URL(request.url), path = url.pathname;
@@ -102,10 +102,13 @@ export default async function middleware(request) {
   }
 
   if (PUBLIC.has(path)) return next();
-  if (Object.keys(users).length && (await tokenOk(getCookie(request), users))) return next();
+  if (Object.keys(users).length && (await tokenOk(getCookie(request), users))) {
+    if (path === "/" || path === "/index.html") return to("/%EC%98%88%EC%83%81%EC%8B%A4%EC%A0%81.html");   // 이 사이트에는 index.html 이 없으므로 예상실적 화면으로
+    return next();
+  }
 
   // 로그인 안 됨: 페이지 이동이면 로그인 화면으로, 파일(데이터) 요청이면 401
   const wantsPage = request.method === "GET" && (path === "/" || path.endsWith(".html") || (request.headers.get("accept") || "").includes("text/html"));
-  if (wantsPage) return to("/login.html?next=" + encodeURIComponent(safeNext(path === "/" ? "/index.html" : path + url.search)));
+  if (wantsPage) return to("/login.html?next=" + encodeURIComponent(safeNext(path === "/" ? "/예상실적.html" : path + url.search)));
   return plain("로그인이 필요합니다.", 401);
 }

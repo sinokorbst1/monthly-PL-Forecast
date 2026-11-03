@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>로그인</title>
+<title>예상실적 로그인</title>
 <style>
   :root { --brand:#1f8fe0; --ink:#1e2a36; --muted:#6b7a89; --line:#dfe6ee; --bg:#f3f7fb; --bad:#c0392b; }
   * { box-sizing:border-box; }
@@ -23,7 +23,7 @@
 </style>
 </head>
 <body>
-<div class="top">실적 검증</div>
+<div class="top">예상실적</div>
 <div class="card">
   <h1>로그인</h1>
   <p class="sub">승인된 사내 메일 계정만 이용할 수 있습니다.</p>
@@ -51,8 +51,8 @@ $("f").addEventListener("submit", async (e) => {
       body: JSON.stringify({ email: $("email").value, password: $("pw").value }) });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.ok) {
-      const n = params.get("next") || "/index.html";
-      location.replace(n.startsWith("/") && !n.startsWith("//") ? n : "/index.html");
+      const n = params.get("next") || "/예상실적.html";
+      location.replace(n.startsWith("/") && !n.startsWith("//") ? n : "/예상실적.html");
       return;
     }
     $("msg").textContent = data.error || "로그인하지 못했습니다.";
